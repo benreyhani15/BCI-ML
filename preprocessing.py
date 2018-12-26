@@ -20,7 +20,7 @@ def check_trainica_comp(path, ica_computed, is_filtered):
     
 def ica(path, eeg, for_train, is_filtered):
     ica_data = compute_ica(path, eeg)
-    if for_train:
+    #if for_train:
         #check_trainica_comp(path, ica_data, is_filtered)
     return ica_data
 
