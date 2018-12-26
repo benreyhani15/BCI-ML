@@ -13,7 +13,7 @@ def send_email_notification(content="test"):
     
     server = smtplib.SMTP('smtp.gmail.com', 587)
     server.starttls()
-    server.login(email, "Rapsrule23!")
+    server.login(email, "########")
     text = msg.as_string()
     server.sendmail(email, email, text)
     server.quit()
