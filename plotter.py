@@ -2,6 +2,8 @@ from sklearn.metrics import confusion_matrix
 import numpy as np
 import matplotlib.pyplot as plt
 import itertools
+from numpy.fft import fft, fftshift
+import pandas as pd
 
 def plot_confusion_matrix(classes, actual, predictions):
     cm = confusion_matrix(actual, predictions)
@@ -35,3 +37,49 @@ def plot_binary_scatter(x, y, title, freqs):
     plt.text(1, 0.1, string_text, ha='left', wrap=True)
     plt.show()
     #return plt
+
+def plot_scatter_2_independent_vars(dependent_var, independent_var, ticks1, ticks2, title, y_label, x_label1, x_label2):
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    ax2 = ax1.twiny()
+    ax1.plot(independent_var, dependent_var)
+    ax1.set_xlabel(x_label1)
+    ax2.set_xlim(ax1.get_xlim())
+    ax1.set_xticks(ticks1)
+    ax2.set_xticks(ticks1)
+    ax2.set_xticklabels(ticks2)
+    ax2.set_xlabel(x_label2)
+    plt.title(title, y=1.15)
+    plt.show()
+    
+def plot_multivariable_scatter(df, ylabel, title):
+    # Assume first column is df is independent value and xlabel
+    xlabel = df.columns[0]
+    for i in np.arange(1, len(df.columns)):    
+        plt.plot(xlabel, df.columns[i], data=df, marker='o', markerfacecolor='green', markersize=6, linewidth=4)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.legend()
+    plt.show()
+    
+def plot_window(window, title, nfft, sampling_freq):
+    # Time Domain
+    plt.plot(window)
+    plt.title("Time Domain of the {} Window with {} Data Points".format(title, len(window)))
+    plt.ylabel("Amplitude")
+    plt.xlabel("Sample")
+    plt.show()
+    
+    # Frequency Response
+    plt.figure()
+    A = fft(window, nfft)/(len(window)/2)
+    nyquist_limit = sampling_freq/2
+    freq = np.linspace(-nyquist_limit, nyquist_limit, len(A))
+    response = 20 * np.log10(np.abs(fftshift(A / abs(A).max())))
+    plt.plot(freq, response)
+    plt.axis([-nyquist_limit, nyquist_limit, -80, 0])
+    plt.title(r"Frequency Response of the {} Window with {} Data Points".format(title, len(window)))
+    plt.ylabel("Normalized magnitude [dB]")
+    plt.xlabel("Frequency [Hz]")
+    plt.show()
