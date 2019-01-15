@@ -18,16 +18,19 @@ def analyze_feature_performance(C, test_accs, train_accs, features_used, variabl
         df_features[content] = features_used[i]
     
     if 'test' in metrics_computed:
+        print("Test Classification")
         plotter.plot_multivariable_scatter(df_test_acc, 'Classification Accuracy (%)', r"{}: Test Classification Accuracy".format(title))
         for i, content in enumerate(variable_array):
             print("{} Stats: mean={:.2f}%, max={:.2f}%".format(content, test_accs[i].mean(), test_accs[i].max()))
     
     if 'train' in metrics_computed:
+        print("Train Classification")
         plotter.plot_multivariable_scatter(df_train_acc, 'Classification Accuracy (%)', r"{}: Train Classification Accuracy".format(title))
         for i, content in enumerate(variable_array):
             print("{} Stats: mean={:.2f}%, max={:.2f}%".format(content, train_accs[i].mean(), train_accs[i].max()))
     
     if 'features' in metrics_computed:
+        print("Features Used")
         plotter.plot_multivariable_scatter(df_features, 'Number of Features Used', r"{}: Fraction of {} Original Features Used".format(title, orig_feature_count))
         for i, content in enumerate(variable_array):
             print("{} Stats: max={}, min={}".format(content, features_used[i].max(), features_used[i].min()))
@@ -73,8 +76,8 @@ def AR_YW_model_order_comparison(y_train, y_test, ica_train, ica_test, classific
     X_test_array = []
     y_test_array = []
     ar_coeff_labels = []
-    model_orders = np.arange(1, 20)
-    
+    #model_orders = [2, 3, 5, 8]
+    model_orders = np.arange(10, 30)
     for idx, model_order in enumerate(model_orders):
         X_train, y_train_tmp = extract_AR_YW_coeffs_dataset(y_train, ica_train, model_order, min_time = 4, max_time = 6, sampling_freq = 250,
                                  window_duration = 1, compute_multiple_segs_per_trial = True)
@@ -86,9 +89,9 @@ def AR_YW_model_order_comparison(y_train, y_test, ica_train, ica_test, classific
         y_test_array.append(y_test_tmp)
         ar_coeff_labels.append((np.arange(1, model_order+1)))
            
-    
-    #C = np.linspace(0.004, 0.1, 100)
-    C = [1, 5, 10, 50, 100, 250, 500, 750, 1000, 1250, 1500, 2000, 3000]
+    C = np.arange(0.005, 0.5, 0.05)
+    #C = np.arange(0.005, 1, 0.01)
+    #C = [0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20, 22.5, 25, 27.5, 30, 32.5, 35, 37.5, 40, 42.5, 45, 47.5, 50]
     num_ica_comps = ica_train.shape[0]
 
     train_accs, test_accs, features_used = classifier.evaluate_multiple_linsvms_for_comparison(X_train_array, X_test_array,
@@ -96,6 +99,8 @@ def AR_YW_model_order_comparison(y_train, y_test, ica_train, ica_test, classific
                                                             ar_coeff_labels, 'AR Coeff', C, num_ica_comps, 
                                                                 loss_fxn = 'squared_hinge', pen = 'l1')
     plotter.plot_2d_annotated_heatmap(test_accs, "Test Classification Accuracy", 'C', 'Model Order', C, model_orders)
+    title =  "Yule-Walker AR Coefficients"
+    #analyze_feature_performance(C, test_accs, train_accs, features_used, np.asarray(model_orders, str), title, 'model order x 22')
     #plotter.plot_2d_annotated_heatmap(train_accs, "Train Classification Accuracy", 'C', 'Model Order', C, model_orders)
     #plotter.plot_2d_annotated_heatmap(features_used, "Features Used", 'C', 'Model Order', C, model_orders)
     return train_accs, test_accs, features_used

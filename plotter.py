@@ -73,6 +73,7 @@ def plot_scatter_2_independent_vars(dependent_var, independent_var, ticks1, tick
     
 def plot_multivariable_scatter(df, ylabel, title):
     # Assume first column is df is independent value and xlabel
+    plt.figure()
     xlabel = df.columns[0]
     for i in np.arange(1, len(df.columns)):    
         plt.plot(xlabel, df.columns[i], data=df, marker='o', markerfacecolor='green', markersize=6, linewidth=4)
@@ -84,6 +85,7 @@ def plot_multivariable_scatter(df, ylabel, title):
     
 def plot_window(window, title, nfft, sampling_freq):
     # Time Domain
+    plt.figure()
     plt.plot(window)
     plt.title("Time Domain of the {} Window with {} Data Points".format(title, len(window)))
     plt.ylabel("Amplitude")
