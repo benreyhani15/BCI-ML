@@ -3,6 +3,7 @@ from scipy.signal import periodogram, get_window, welch
 import preprocessing as pre
 import data_loader as dl
 import pandas as pd
+from spectrum import aryule
 
 def compute_psdp(data, fft_length = 1024, fft_window = "boxcar", min_time = 4, 
                  max_time = 6, sampling_freq = 250, window_duration = 2, compute_multiple_segs_per_trial = True):
@@ -77,6 +78,44 @@ def compute_psd_welch(data, n_per_window, fft_length = 1024, fft_window = "boxca
     #print("Final features shape: {}\n".format(psd_features.shape))
     return psd_features, f[idx]
 
+def extract_AR_YW_coeff_features(data, model_order, min_time = 4, max_time = 6, sampling_freq = 250,
+                                 window_duration = 2, compute_multiple_segs_per_trial = True):
+    features_array = []
+    segments_per_trial = (int)((max_time-min_time)/window_duration) if compute_multiple_segs_per_trial else 1
+    delta = (int)(window_duration*sampling_freq)
+    for i in np.arange(data.shape[2]):
+        #print("\n\ncomputing PSDs for data sample: {}".format(i)) 
+        start_idx = (int)(sampling_freq * min_time)
+        for k in np.arange(segments_per_trial):
+            #print("For data segment: {}".format(k))
+            tmp_array = []
+            for j in np.arange(data.shape[0]):
+                #print("Working on component: {}".format(j))
+                end_idx = start_idx+delta
+                #print("start: {}, end:{}".format(start_idx, end_idx))
+                datum = data[j, start_idx :end_idx, i]
+                #print("Shape of datum: {}".format(datum.shape))              
+                ar_coeffs, var, reflec_coeffs = aryule(datum, model_order)
+         #      print("# of extracted features: {}".format(len(idx)))
+                tmp_array.append(ar_coeffs)
+            features_array.append(tmp_array)
+            start_idx = end_idx
+    ar_coeff_features = np.asarray(features_array)
+    #print("Shape of AR Coeff features: {}\n".format(ar_coeff_features.shape))
+    ar_coeff_features = ar_coeff_features.reshape(ar_coeff_features.shape[0], 
+           ar_coeff_features.shape[1]*ar_coeff_features.shape[2])
+    #print("Final features shape: {}\n".format(ar_coeff_features.shape))
+    print("Derp: {}".format(ar_coeff_features.shape))
+    return ar_coeff_features   
+
+def extract_AR_YW_coeffs_dataset(labels, ica_data, model_order, min_time = 4, max_time = 6, sampling_freq = 250,
+                                 window_duration = 2, compute_multiple_segs_per_trial = True):
+    segments_per_trial = (int)((max_time-min_time)/window_duration) if compute_multiple_segs_per_trial else 1
+    labels = np.repeat(labels, segments_per_trial)
+    X = extract_AR_YW_coeff_features(ica_data, model_order, min_time = min_time, max_time = max_time, sampling_freq = sampling_freq,
+                                 window_duration = window_duration, compute_multiple_segs_per_trial = compute_multiple_segs_per_trial)
+    return X, labels
+
 def extract_psdP_features_using_windows(labels, ica_data, fft_length = 1024, fft_window = "boxcar", min_time = 4, 
                  max_time = 6, sampling_freq = 250, window_duration = 2, frequency_precision = 1, compute_multiple_segs_per_trial = True):
     segments_per_trial = (int)((max_time-min_time)/window_duration) if compute_multiple_segs_per_trial else 1
@@ -111,7 +150,6 @@ def extract_psdW_features_using_windows(labels, ica_data, time_per_seg, fft_leng
     freqs_red = freqs.reshape(-1, freq_reduction).mean(axis=1)
     return X_red, labels, freqs_red
 
-    
 if __name__ == "__main__":
     # Testing different PSD estimating techniques for short data samples
     path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A'

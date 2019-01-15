@@ -38,6 +38,25 @@ def plot_binary_scatter(x, y, title, freqs):
     plt.show()
     #return plt
 
+def plot_2d_annotated_heatmap(data, title, xlabel, ylabel, x_vals, y_vals):
+    fig, ax = plt.subplots()
+    im = ax.imshow(data)
+    ax.set_xticks(np.arange(len(x_vals)))
+    ax.set_yticks(np.arange(len(y_vals)))
+    ax.set_xticklabels(x_vals)
+    ax.set_yticklabels(y_vals)
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+    for i in range(len(y_vals)):
+        for j in range(len(x_vals)):
+            text = ax.text(j, i, data[i, j],
+                       ha="center", va="center", color="black")
+
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    fig.tight_layout()
+    plt.show()
+    
 def plot_scatter_2_independent_vars(dependent_var, independent_var, ticks1, ticks2, title, y_label, x_label1, x_label2):
     fig = plt.figure()
     ax1 = fig.add_subplot(111)

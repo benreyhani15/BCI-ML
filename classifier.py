@@ -38,18 +38,18 @@ def train_linear_SVM(X_train, y_train, loss_fxn, pen, c):
     lin_svm.fit(X_train, y_train)
     return lin_svm
     
-def evaluate_linear_SVM(X_train, y_train, X_test, y_test, loss_fxn, penalty, c, freqs, num_ica_comps, just_ac=False):
+def evaluate_linear_SVM(X_train, y_train, X_test, y_test, loss_fxn, penalty, c, feature_labels, feature_type, num_ica_comps, just_ac=False):
     X_train_standard, scaler = pre.standardise_data(X_train)
     lin_svm = train_linear_SVM(X_train_standard, y_train, loss_fxn, penalty, c)
     X_test_standard = scaler.transform(X_test)
     accuracy_test, accuracy_train = analyzer.evalulate_classifier("Linear SVM with L1 and c: {}".format(c), lin_svm, X_test_standard, y_test, 
                                                                   X_train_standard, y_train,
-                                                                        freqs, num_ica_comps, just_accuracy=just_ac)
+                                                                        feature_labels, feature_labels, num_ica_comps, just_accuracy=just_ac)
     return accuracy_test, lin_svm, accuracy_train
 
-def evaluate_multiple_linsvms_for_comparison(X_train_array, X_test_array, y_train, y_test, freqs, C, num_ica_comps, loss_fxn = 'squared_hinge', pen = 'l1'):
-    num_feature_types = X_train_array.shape[0]
-    if num_feature_types != X_test_array.shape[0]:
+def evaluate_multiple_linsvms_for_comparison(X_train_array, X_test_array, y_train, y_test, feature_labels, feature_type, C, num_ica_comps, loss_fxn = 'squared_hinge', pen = 'l1'):
+    num_feature_types = len(X_train_array)
+    if num_feature_types != len(X_test_array):
         raise Exception('Something wrong with Feature array setup: train vs. test')
     
     test_accs = np.zeros((num_feature_types, len(C)))
@@ -58,11 +58,12 @@ def evaluate_multiple_linsvms_for_comparison(X_train_array, X_test_array, y_trai
     for idx, c in enumerate(C):
         for j in np.arange(num_feature_types):
             #print("X train array:{} , y_train: {}, X_test: {}, y_test:{}".format(X_train_array[j].shape, y_train[j].shape, X_test_array[j].shape, y_test[j].shape))
-            test_accs[j, idx], classifier, train_accs[j, idx] = evaluate_linear_SVM(X_train_array[j], y_train[j], X_test_array[j], y_test[j], 'squared_hinge', 'l1', c, freqs[j], num_ica_comps, just_ac = True) 
+            test_accs[j, idx], classifier, train_accs[j, idx] = evaluate_linear_SVM(X_train_array[j], y_train[j], X_test_array[j], y_test[j], 'squared_hinge', 'l1', c, feature_labels[j],
+                     feature_type, num_ica_comps, just_ac = True) 
             useful, useless = analyzer.find_useful_features(classifier.coef_)
             features_used[j, idx] = len(useful)
-    test_accs = test_accs*100
-    train_accs = train_accs*100
+    test_accs = np.round(test_accs*100, 2)
+    train_accs = np.round(train_accs*100, 2)
     return train_accs, test_accs, features_used
 
 if __name__ == '__main__':

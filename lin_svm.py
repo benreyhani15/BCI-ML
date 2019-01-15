@@ -12,8 +12,8 @@ def find_optimal_c_cv(X_train, y_train, pen, loss_fxn, send_notif, title, folds=
     results = classifier.find_linear_SVM(X_train, y_train, param_grid_linsvm, pen, loss_fxn, send_notif,title, folds)
     return results
 
-def evaluate_linSVM(X_train, y_train, X_test, y_test, c, freqs, num_components, pen = 'l1', loss_fxn = "squared_hinge"):
-     return classifier.evaluate_linear_SVM(X_train, y_train, X_test, y_test,loss_fxn, pen, c, freqs, num_components)
+def evaluate_linSVM(X_train, y_train, X_test, y_test, c, feature_labels, feature_type, num_components, pen = 'l1', loss_fxn = "squared_hinge"):
+     return classifier.evaluate_linear_SVM(X_train, y_train, X_test, y_test,loss_fxn, pen, c, feature_labels,feature_type, num_components)
     
 def run_it():
     rejected_idx, eeg_train, eeg_test, eeg_trainfil, eeg_testfil, y_train, y_test = dl.load_dataset(path)

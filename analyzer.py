@@ -19,7 +19,7 @@ def get_string_results(grid_search):
                    grid_search.cv_results_['std_test_score'][i])
     return string
 
-def evalulate_classifier(title, classifier, X_test, y_test, X_train, y_train, freqs, num_ica_comps, just_accuracy= True):
+def evalulate_classifier(title, classifier, X_test, y_test, X_train, y_train, feature_labels, feature_type, num_ica_comps, just_accuracy= True):
     predictions = classifier.predict(X_test)
     accuracy_test = classifier.score(X_test, y_test)
     accuracy_train = classifier.score(X_train, y_train)

@@ -3,7 +3,7 @@ import preprocessing as pre
 import plotter, classifier
 import numpy as np
 import pandas as pd
-from feature_extraction import extract_psdP_features_using_windows, extract_psdW_features_using_windows
+from feature_extraction import extract_psdP_features_using_windows, extract_psdW_features_using_windows, extract_AR_YW_coeffs_dataset
 
 
 def analyze_feature_performance(C, test_accs, train_accs, features_used, variable_array, title, orig_feature_count, 
@@ -60,10 +60,45 @@ def periodogram_classification_duration_comparison(y_train, y_test, ica_train, i
     num_ica_comps = ica_train.shape[0]
     train_accs, test_accs, features_used = classifier.evaluate_multiple_linsvms_for_comparison(np.asarray(X_train_array), np.asarray(X_test_array),
                                                         np.asarray(y_train_array), np.asarray(y_test_array), 
-                                                            np.asarray(freqs), C, num_ica_comps, 
+                                                            np.asarray(freqs), 'PSD', C, num_ica_comps, 
                                                                 loss_fxn = 'squared_hinge', pen = 'l1')
     title = "Periodogram-{} Window".format(window)
     analyze_feature_performance(C, test_accs, train_accs, features_used, independent_var_array, title, X_train_array[0].shape[1])
+
+#Comparison of different model order 
+def AR_YW_model_order_comparison(y_train, y_test, ica_train, ica_test, classification_duration):
+    # Doesn't support overlapping windows yet
+    X_train_array = []
+    y_train_array = []
+    X_test_array = []
+    y_test_array = []
+    ar_coeff_labels = []
+    model_orders = np.arange(1, 20)
+    
+    for idx, model_order in enumerate(model_orders):
+        X_train, y_train_tmp = extract_AR_YW_coeffs_dataset(y_train, ica_train, model_order, min_time = 4, max_time = 6, sampling_freq = 250,
+                                 window_duration = 1, compute_multiple_segs_per_trial = True)
+        X_test, y_test_tmp = extract_AR_YW_coeffs_dataset(y_test, ica_test, model_order, min_time = 4, max_time = 6, sampling_freq = 250,
+                                 window_duration = 1, compute_multiple_segs_per_trial = True)
+        X_train_array.append(X_train)
+        y_train_array.append(y_train_tmp)
+        X_test_array.append(X_test)
+        y_test_array.append(y_test_tmp)
+        ar_coeff_labels.append((np.arange(1, model_order+1)))
+           
+    
+    #C = np.linspace(0.004, 0.1, 100)
+    C = [1, 5, 10, 50, 100, 250, 500, 750, 1000, 1250, 1500, 2000, 3000]
+    num_ica_comps = ica_train.shape[0]
+
+    train_accs, test_accs, features_used = classifier.evaluate_multiple_linsvms_for_comparison(X_train_array, X_test_array,
+                                                        y_train_array, y_test_array, 
+                                                            ar_coeff_labels, 'AR Coeff', C, num_ica_comps, 
+                                                                loss_fxn = 'squared_hinge', pen = 'l1')
+    plotter.plot_2d_annotated_heatmap(test_accs, "Test Classification Accuracy", 'C', 'Model Order', C, model_orders)
+    #plotter.plot_2d_annotated_heatmap(train_accs, "Train Classification Accuracy", 'C', 'Model Order', C, model_orders)
+    #plotter.plot_2d_annotated_heatmap(features_used, "Features Used", 'C', 'Model Order', C, model_orders)
+    return train_accs, test_accs, features_used
 
 # Comparison of different windows for a given time duration classification
 def periodogram_window_comparison(y_train, y_test, ica_train, ica_test, classification_duration, windows, freq_prec = 1):
@@ -93,7 +128,7 @@ def periodogram_window_comparison(y_train, y_test, ica_train, ica_test, classifi
     num_ica_comps = ica_train.shape[0]
     train_accs, test_accs, features_used = classifier.evaluate_multiple_linsvms_for_comparison(np.asarray(X_train_array), np.asarray(X_test_array),
                                                         np.asarray(y_train_array), np.asarray(y_test_array), 
-                                                            np.asarray(freqs), C, num_ica_comps, 
+                                                            np.asarray(freqs), 'PSD', C, num_ica_comps, 
                                                                 loss_fxn = 'squared_hinge', pen = 'l1')
     title = "Periodogram-{}s Classification for Various Windows".format(classification_duration)
     analyze_feature_performance(C, test_accs, train_accs, features_used, independent_var_array, title, X_train_array[0].shape[1], metrics_computed = ['test'])
@@ -125,7 +160,7 @@ def welch_window_duration_comparison(y_train, y_test, ica_train, ica_test, windo
     num_ica_comps = ica_train.shape[0]
     train_accs, test_accs, features_used = classifier.evaluate_multiple_linsvms_for_comparison(np.asarray(X_train_array), np.asarray(X_test_array),
                                                     np.asarray(y_train_array), np.asarray(y_test_array), 
-                                                        np.asarray(freqs), C, num_ica_comps, loss_fxn = 'squared_hinge', pen = 'l1')
+                                                        np.asarray(freqs), 'PSD', C, num_ica_comps, loss_fxn = 'squared_hinge', pen = 'l1')
     
     title = "{}s, 50% Overlap Welch-{} Window".format(window_duration, window)
     analyze_feature_performance(C, test_accs, train_accs, features_used, independent_var_array, title, X_train_array[0].shape[1])
@@ -149,10 +184,10 @@ def periodogram_classification_wrt_data_points_analysis(y_train, y_test, ica_tra
         classification_duration = num_dp/sampling_freq
         X_train, y_train_tmp, freq = extract_psdP_features_using_windows(y_train, ica_train, fft_length = 1024,
                                     fft_window = window, min_time = min_time, max_time = max_time, sampling_freq = sampling_freq,
-                                        window_duration = classification_duration, frequency_precision = frequency_prec, compute_multiple_segs_per_trial = True)
+                                        window_duration = classification_duration, frequency_precision = frequency_prec, compute_multiple_segs_per_trial = False)
         X_test, y_test_tmp, freq = extract_psdP_features_using_windows(y_test, ica_test, fft_length = 1024,
                                     fft_window = window, min_time = min_time, max_time = max_time, sampling_freq = sampling_freq,
-                                        window_duration = classification_duration, frequency_precision = frequency_prec, compute_multiple_segs_per_trial = True)
+                                        window_duration = classification_duration, frequency_precision = frequency_prec, compute_multiple_segs_per_trial = False)
         X_train_array.append(X_train)
         y_train_array.append(y_train_tmp)
         X_test_array.append(X_test)
@@ -162,7 +197,7 @@ def periodogram_classification_wrt_data_points_analysis(y_train, y_test, ica_tra
     num_ica_comps = ica_train.shape[0]
     train_accs, test_accs, features_used = classifier.evaluate_multiple_linsvms_for_comparison(np.asarray(X_train_array), np.asarray(X_test_array),
                                                         np.asarray(y_train_array), np.asarray(y_test_array), 
-                                                            np.asarray(freqs), C, num_ica_comps, 
+                                                            np.asarray(freqs), 'PSD', C, num_ica_comps, 
                                                                 loss_fxn = 'squared_hinge', pen = 'l1')
     
     mean_test_accs = test_accs.mean(axis=1)
@@ -188,12 +223,12 @@ if __name__ == "__main__":
     
     # Run it for 3 class problems (hands and feet)
     y_train, eeg_train = pre.extract_3_class(y_train, eeg_trainfil)
-    y_test, eeg_test = pre.extract_3_class(y_test, eeg_test)
+    y_test, eeg_test = pre.extract_3_class(y_test, eeg_testfil)
     
     ica_test = pre.ica(directory, eeg_test, algorithm='extended-infomax')
     ica_train = pre.ica(directory, eeg_train, algorithm='extended-infomax')
    
-    TEST_TYPE = 'periodogram_dp_comparison'
+    TEST_TYPE = 'AR_yule_walker_coeff_model_order_comparison'
     if TEST_TYPE == 'periodogram_dur_comparison':
         #print("periodogram")
         periodogram_window_durations = [2, 1, 0.5, .25]
@@ -211,5 +246,6 @@ if __name__ == "__main__":
         #periodogram_window_comparison(y_train, y_test, ica_train, ica_test, 0.25, windows, freq_prec = 1)
     elif TEST_TYPE == 'periodogram_dp_comparison':
         test_accs = periodogram_classification_wrt_data_points_analysis(y_train, y_test, ica_train, ica_test, window = 'boxcar', frequency_prec = 1)
-        
+    elif TEST_TYPE == 'AR_yule_walker_coeff_model_order_comparison':
+        train_accs, test_accs, features_used = AR_YW_model_order_comparison(y_train, y_test, ica_train, ica_test, 1)
         

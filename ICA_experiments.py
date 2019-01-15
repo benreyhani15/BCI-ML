@@ -25,10 +25,10 @@ def run_ICA_filt_test():
     #values[0] = lin_svm.find_optimal_c_cv(X_train, y_train, 'l1', 'squared_hinge', False, "No Filter")
     #values[1] = lin_svm.find_optimal_c_cv(X_trainfilt, y_train, 'l1', 'squared_hinge', False, "Filter")
     for idx, c in enumerate(C_array):
-        #values[2,idx], classifier = lin_svm.evaluate_linSVM(X_train, y_train, X_test, y_test, c,freqs, ica_train.shape[0]) 
-        values[0, idx], classifier = lin_svm.evaluate_linSVM(X_trainfilt, y_train, X_test, y_test, c,freqs, ica_trainfilt.shape[0]) 
-        #values[4,idx], classifier = lin_svm.evaluate_linSVM(X_train, y_train, X_testfilt, y_test, c,freqs, ica_train.shape[0]) 
-        values[1, idx], classifier = lin_svm.evaluate_linSVM(X_trainfilt, y_train, X_testfilt, y_test, c,freqs, ica_trainfilt.shape[0]) 
+        #values[2,idx], classifier = lin_svm.evaluate_linSVM(X_train, y_train, X_test, y_test, c,freqs, 'PSD' ica_train.shape[0]) 
+        values[0, idx], classifier = lin_svm.evaluate_linSVM(X_trainfilt, y_train, X_test, y_test, c,freqs, 'PSD', ica_trainfilt.shape[0]) 
+        #values[4,idx], classifier = lin_svm.evaluate_linSVM(X_train, y_train, X_testfilt, y_test, c,freqs, 'PSD', ica_train.shape[0]) 
+        values[1, idx], classifier = lin_svm.evaluate_linSVM(X_trainfilt, y_train, X_testfilt, y_test, c,freqs, 'PSD', ica_trainfilt.shape[0]) 
     #get_experiment_results(values)
     diff = values[0] - values[1]
     print("Mean difference: {}, Max diff: {}, Min diff: {}".format(diff.mean(), np.max(np.abs(diff)), np.min(np.abs(diff))))
@@ -60,7 +60,7 @@ def test_CV_folds():
 
     actual = np.zeros(len(C))
     for idx, c in enumerate(C):
-        actual[idx], classifier = lin_svm.evaluate_linSVM(X_train, y_train, X_test, y_test, c ,freqs, ica_train.shape[0]) 
+        actual[idx], classifier = lin_svm.evaluate_linSVM(X_train, y_train, X_test, y_test, c ,freqs, 'PSD', ica_train.shape[0]) 
     
     values = actual-values
     return (values*100)
