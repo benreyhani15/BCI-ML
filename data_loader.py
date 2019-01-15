@@ -7,19 +7,24 @@ def load_EEGdataset_using_MAT(path):
     # Already epoched
     eeg_train = sp.io.loadmat(os.path.join(path,'traineeg'))['eeg']
     eeg_train = eeg_train[0:22]
+    #Filtered from epochs 
+    eeg_test_filtered = sp.io.loadmat(os.path.join(path,'testeeg_filt'))['eeg']
+    eeg_test_filtered = eeg_test_filtered[0:22]  
     
-    # Filtered from cont
+    eeg_train_filtered, eeg_test, reject_idx = load_pertinentEEGdataset(path)
+   
+    return reject_idx, eeg_train, eeg_test, eeg_train_filtered, eeg_test_filtered
+
+def load_pertinentEEGdataset(path):
+     # Filtered from cont
     eeg_train_filtered = sp.io.loadmat(os.path.join(path,'traineeg_filt'))['eeg']
     eeg_train_filtered = eeg_train_filtered[0:22]
     
     eeg_test = sp.io.loadmat(os.path.join(path,'testeeg'))['eeg']
     eeg_test = eeg_test[0:22]  
     
-    #Filtered from epochs 
-    eeg_test_filtered = sp.io.loadmat(os.path.join(path,'testeeg_filt'))['eeg']
-    eeg_test_filtered = eeg_test_filtered[0:22]  
-    
-    return eeg_train, eeg_test, eeg_train_filtered, eeg_test_filtered
+    reject_idx = sp.io.loadmat(os.path.join(path, 'reject_idx'))['reject_idx']
+    return eeg_train_filtered, eeg_test, reject_idx
 
 def load_EEGdataset_using_MNE(path):
     # Are not epoched or filtered : BROKEN FOR BCI COMP DATA SET (CANT EXTRACT EPOCHS PROPERLY)
@@ -31,10 +36,11 @@ def load_EEGdataset_using_MNE(path):
     
     train_filtered 
     """
-
-def load_ica_mats(path):
+    
+# Algorithm can take on values: 'extended-infomax', 'sobi', 'jade'
+def load_ica_mats(path, algorithm):
     sphere = sp.io.loadmat(os.path.join(path,'ica_sphere'))['ica_sphere']
-    ica_weights = sp.io.loadmat(os.path.join(path,'ica_weights'))['ica_weights']
+    ica_weights = sp.io.loadmat(os.path.join(path, algorithm))['ica_weights']
     return sphere, ica_weights
 
 def load_labels(path):
@@ -49,6 +55,6 @@ def load_labels(path):
     return y_train, y_test
 
 def load_dataset(path):
-    eeg_train, eeg_test, eeg_train_filt, eeg_test_filt = load_EEGdataset_using_MAT(path)
+    rejected_idx, eeg_train, eeg_test, eeg_train_filt, eeg_test_filt = load_EEGdataset_using_MAT(path)
     y_train, y_test = load_labels(path)
-    return eeg_train, eeg_test, eeg_train_filt, eeg_test_filt, y_train, y_test
+    return rejected_idx, eeg_train, eeg_test, eeg_train_filt, eeg_test_filt, y_train, y_test

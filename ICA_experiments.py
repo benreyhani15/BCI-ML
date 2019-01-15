@@ -5,51 +5,41 @@ import feature_extraction as fe
 import numpy as np
 import scipy as sp
 
-def run_ICA_filt_and_CV_test():
+def run_ICA_filt_test():
     path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A1'
-    eeg_train, eeg_test, eeg_trainfil, eeg_testfil, y_train, y_test = dl.load_dataset(path)
+    rejected_idx, eeg_train, eeg_test, eeg_trainfil, eeg_testfil, y_train, y_test = dl.load_dataset(path)
     
-    ica_train = pre.ica(path, eeg_train, True, False)
-    ica_test = pre.ica(path, eeg_test, False, False)
-    ica_trainfilt = pre.ica(path, eeg_trainfil, True, True)
-    ica_test_filt = pre.ica(path, eeg_testfil, False, False)
+    #ica_train = pre.ica(path, eeg_train)
+    ica_test = pre.ica(path, eeg_test)
+    ica_trainfilt = pre.ica(path, eeg_trainfil)
+    ica_test_filt = pre.ica(path, eeg_testfil)
     
-    X_train, freqs = fe.compute_psdp(ica_train, fft_length = 1024, fft_window = 'boxcar')
-    X_test, freqs2 = fe.compute_psdp(ica_test, fft_length = 1024, fft_window = 'boxcar')
-    X_trainfilt, freqs3 = fe.compute_psdp(ica_trainfilt, fft_length = 1024, fft_window = 'boxcar')
-    X_testfilt, freqs4 = fe.compute_psdp(ica_test_filt, fft_length = 1024, fft_window = 'boxcar')
+    #X_train, freqs = fe.compute_psdp(ica_train, fft_length = 1024, fft_window = 'boxcar')
+    X_test, freqs = fe.compute_psdp(ica_test, fft_length = 1024, fft_window = 'boxcar')
+    X_trainfilt, freqs = fe.compute_psdp(ica_trainfilt, fft_length = 1024, fft_window = 'boxcar')
+    X_testfilt, freqs = fe.compute_psdp(ica_test_filt, fft_length = 1024, fft_window = 'boxcar')
     
-    values = np.zeros((6,len(C_array)))
-    values[0] = lin_svm.find_optimal_c_cv(X_train, y_train, 'l1', 'squared_hinge', False, "No Filter")
-    values[1] = lin_svm.find_optimal_c_cv(X_trainfilt, y_train, 'l1', 'squared_hinge', False, "Filter")
-    C_array = np.arange(0.0025, 0.09,0.0025)
-    for idx, c in enumerate(C_array):
-        values[2,idx] = lin_svm.evaluate_linSVM_l1(X_train, y_train, X_test, y_test, c,freqs, ica_train.shape[0]) 
-        values[3, idx] = lin_svm.evaluate_linSVM_l1(X_trainfilt, y_train, X_test, y_test, c,freqs, ica_train.shape[0]) 
-        values[4,idx] = lin_svm.evaluate_linSVM_l1(X_train, y_train, X_testfilt, y_test, c,freqs, ica_train.shape[0]) 
-        values[5, idx] = lin_svm.evaluate_linSVM_l1(X_trainfilt, y_train, X_testfilt, y_test, c,freqs, ica_train.shape[0]) 
-    get_experiment_results(values)
-    return values
+    C_array = np.arange(0.01, 0.025,0.0025)
 
-def evaluate_different_ica_components():
-    path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A1'
-    eeg_train, eeg_test, eeg_trainfil, eeg_testfil, y_train, y_test = dl.load_dataset(path)
-    
-    ica_train = pre.ica(path, eeg_trainfil, False, True)
-    ica_test = pre.ica(path, eeg_test, False, False)
-    
-    X_train, freqs = fe.compute_psdp(ica_train, fft_length = 1024, fft_window = 'boxcar')
-    X_test, freqs2 = fe.compute_psdp(ica_test, fft_length = 1024, fft_window = 'boxcar')
-    
-    for C in [0.001, 0.01, 0.0125, 0.015, 0.0175, 0.1, 1, 10, 100, 1000]:
-        lin_svm.evaluate_linSVM_l1(X_train, y_train, X_test, y_test,C ,freqs, ica_train.shape[0]) 
-      
+    values = np.zeros((2,len(C_array)))
+    #values[0] = lin_svm.find_optimal_c_cv(X_train, y_train, 'l1', 'squared_hinge', False, "No Filter")
+    #values[1] = lin_svm.find_optimal_c_cv(X_trainfilt, y_train, 'l1', 'squared_hinge', False, "Filter")
+    for idx, c in enumerate(C_array):
+        #values[2,idx], classifier = lin_svm.evaluate_linSVM(X_train, y_train, X_test, y_test, c,freqs, ica_train.shape[0]) 
+        values[0, idx], classifier = lin_svm.evaluate_linSVM(X_trainfilt, y_train, X_test, y_test, c,freqs, ica_trainfilt.shape[0]) 
+        #values[4,idx], classifier = lin_svm.evaluate_linSVM(X_train, y_train, X_testfilt, y_test, c,freqs, ica_train.shape[0]) 
+        values[1, idx], classifier = lin_svm.evaluate_linSVM(X_trainfilt, y_train, X_testfilt, y_test, c,freqs, ica_trainfilt.shape[0]) 
+    #get_experiment_results(values)
+    diff = values[0] - values[1]
+    print("Mean difference: {}, Max diff: {}, Min diff: {}".format(diff.mean(), np.max(np.abs(diff)), np.min(np.abs(diff))))
+    return values, C_array
+       
 def test_CV_folds():
     path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A1'
-    eeg_train, eeg_test, eeg_trainfil, eeg_testfil, y_train, y_test = dl.load_dataset(path)
+    rejected_idx, eeg_train, eeg_test, eeg_trainfil, eeg_testfil, y_train, y_test = dl.load_dataset(path)
     
-    ica_train = pre.ica(path, eeg_trainfil, False, True)
-    ica_test = pre.ica(path, eeg_test, False, False)
+    ica_train = pre.ica(path, eeg_trainfil)
+    ica_test = pre.ica(path, eeg_test)
     
     X_train, freqs = fe.compute_psdp(ica_train, fft_length = 1024, fft_window = 'boxcar')
     X_test, freqs2 = fe.compute_psdp(ica_test, fft_length = 1024, fft_window = 'boxcar')
@@ -70,9 +60,9 @@ def test_CV_folds():
 
     actual = np.zeros(len(C))
     for idx, c in enumerate(C):
-        actual[idx] = lin_svm.evaluate_linSVM_l1(X_train, y_train, X_test, y_test, c ,freqs, ica_train.shape[0]) 
+        actual[idx], classifier = lin_svm.evaluate_linSVM(X_train, y_train, X_test, y_test, c ,freqs, ica_train.shape[0]) 
     
-    values = values-actual
+    values = actual-values
     return (values*100)
 
 def get_experiment_results(values):
@@ -96,4 +86,4 @@ def get_experiment_results(values):
     
         
 if __name__ == '__main__':
-    run_ICA_filt_and_CV_test()
+    run_ICA_filt_test()
