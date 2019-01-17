@@ -66,36 +66,51 @@ def periodogram_classification_duration_comparison(y_train, y_test, ica_train, i
     analyze_feature_performance(C, test_accs, train_accs, features_used, independent_var_array, title, X_train_array[0].shape[1])
 
 #Comparison of different model order 
-def AR_YW_model_order_comparison(y_train, y_test, ica_train, ica_test, classification_duration):
+def AR_YW_model_order_comparison(y_train, y_test, ica_train, ica_test, classification_duration, use_psd_features = False):
     X_train_array = []
     y_train_array = []
     X_test_array = []
     y_test_array = []
-    coeffs = []
+    feature_labels = []
     
-    model_orders = np.arange(1, 30)
-    C = np.linspace(0.004, 0.1, 100)
+    #model_orders = [3, 17, 18]
+    model_orders = np.arange(1, 20)
+    
+    #C = np.linspace(0.1, 10, 100)
+    C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000]
+    
+    method = 'AR_Yule-Walker_PSD' if use_psd_features else 'AR_Yule-Walker_Coeffs'
     for idx, model_order in enumerate(model_orders):
         extra_args = {"AR_model_order": model_order}
-        X_train, y_train_tmp, coeff_label = extract_coeff_features(y_train, ica_train, 'Yule-Walker_Coeffs', extra_args, min_time = 4, max_time = 6, sampling_freq = 250, 
+        if use_psd_features:
+            X_train, y_train_tmp, freqs = extract_psd_features(y_train, ica_train, method, extra_args, fft_length = 1024, min_time = 4, max_time = 6, 
+                                                sampling_freq = 250, window_duration = classification_duration, frequency_precision = 1, compute_multiple_segs_per_trial = True)
+            X_test, y_test_tmp, freqs = extract_psd_features(y_test, ica_test, method, extra_args, fft_length = 1024, min_time = 4, max_time = 6, 
+                                                sampling_freq = 250, window_duration = classification_duration, frequency_precision = 1, compute_multiple_segs_per_trial = True)
+            feature_labels.append(freqs)
+        else:
+            X_train, y_train_tmp, coeff_labels = extract_coeff_features(y_train, ica_train, method, extra_args, min_time = 4, max_time = 6, sampling_freq = 250, 
                                     window_duration = classification_duration, compute_multiple_segs_per_trial = True)
-        X_test, y_test_tmp, coeff_label = extract_coeff_features(y_test, ica_test, 'Yule-Walker_Coeffs', extra_args, min_time = 4, max_time = 6, sampling_freq = 250, 
+            X_test, y_test_tmp, coeff_labels = extract_coeff_features(y_test, ica_test, method, extra_args, min_time = 4, max_time = 6, sampling_freq = 250, 
                                     window_duration = classification_duration, compute_multiple_segs_per_trial = True)
+            feature_labels.append(coeff_labels)
         X_train_array.append(X_train)
         y_train_array.append(y_train_tmp)
         X_test_array.append(X_test)
         y_test_array.append(y_test_tmp)
-        coeffs.append(coeff_label)
            
-    C = np.linspace(0.004, 0.1, 100)
     num_ica_comps = ica_train.shape[0]
-    train_accs, test_accs, features_used = classifier.evaluate_multiple_linsvms_for_comparison(np.asarray(X_train_array), np.asarray(X_test_array),
-                                                        np.asarray(y_train_array), np.asarray(y_test_array), 
-                                                            np.asarray(coeffs), 'PSD', C, num_ica_comps, 
-                                                                loss_fxn = 'squared_hinge', pen = 'l1')
-    #plotter.plot_2d_annotated_heatmap(test_accs, "Test Classification Accuracy", 'C', 'Model Order', C, model_orders)
-    title =  "Yule-Walker AR Coefficients"
-    analyze_feature_performance(C, test_accs, train_accs, features_used, np.asarray(model_orders, str), title, 'model order x 22',metrics_computed = ['test'])
+    feature_type = 'PSD' if use_psd_features else 'Coeffs'
+    
+    train_accs, test_accs, features_used = classifier.evaluate_multiple_linsvms_for_comparison(X_train_array, X_test_array,
+                                                        y_train_array, y_test_array, feature_labels, feature_type, C, num_ica_comps, loss_fxn = 'squared_hinge', pen = 'l1')
+    
+    plotter.plot_2d_annotated_heatmap(test_accs, "{}s - {} Features' Test Classification Accuracy".format(classification_duration, method), 'C', 'Model Order', C, model_orders)
+    
+    title =  "{}s - {}".format(classification_duration, method)
+    feature_count_label = "{}".format(X_test_array[0].shape[1]) if use_psd_features else "(Model Order x 22)"
+    
+    analyze_feature_performance(C, test_accs, train_accs, features_used, np.asarray(model_orders, str), title, feature_count_label)
     #plotter.plot_2d_annotated_heatmap(train_accs, "Train Classification Accuracy", 'C', 'Model Order', C, model_orders)
     #plotter.plot_2d_annotated_heatmap(features_used, "Features Used", 'C', 'Model Order', C, model_orders)
     return train_accs, test_accs, features_used
@@ -248,5 +263,7 @@ if __name__ == "__main__":
         test_accs = periodogram_classification_wrt_data_points_analysis(y_train, y_test, ica_train, ica_test, window = 'boxcar', frequency_prec = 1)
     elif TEST_TYPE == 'AR_yule_walker_coeff_model_order_comparison':
         #ica_test = pre.ica(directory, eeg_testfil, algorithm='extended-infomax')
-        train_accs, test_accs, features_used = AR_YW_model_order_comparison(y_train, y_test, ica_train, ica_test, 2)
-        
+        train_accs, test_accs, features_used = AR_YW_model_order_comparison(y_train, y_test, ica_train, ica_test, 2, use_psd_features = False)
+    elif TEST_TYPE == 'AR_yule_walker_psd_model_order_comparison':
+        #ica_test = pre.ica(directory, eeg_testfil, algorithm='extended-infomax')
+        train_accs, test_accs2, features_used = AR_YW_model_order_comparison(y_train, y_test, ica_train, ica_test, 2, use_psd_features = True)

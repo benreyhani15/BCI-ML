@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import periodogram, get_window, welch
 import preprocessing as pre
 import data_loader as dl
-from spectrum import aryule
+from spectrum import aryule, pyule
 
 def extract_features(data, method, extra_args, segments_per_trial, min_time = 4, max_time = 6, sampling_freq = 250, window_duration = 2):
     features_array = []
@@ -19,6 +19,7 @@ def extract_features(data, method, extra_args, segments_per_trial, min_time = 4,
                 #print("start: {}, end:{}".format(start_idx, end_idx))
                 datum = data[j, start_idx :end_idx, i]
                 #print("Shape of datum: {}".format(datum.shape))
+                
                 # ---- Periodogram needs extra_arg = {"fft_window"; "fft_length"} ---------
                 if method == 'Periodogram_PSD':
                     fft_window = extra_args["window"]
@@ -46,14 +47,24 @@ def extract_features(data, method, extra_args, segments_per_trial, min_time = 4,
                     idx = np.argwhere((f>=2) & (f<=40.25))[:,0]
                     features = p[idx]  
                     feature_labels = f[idx]
-                elif method == 'Yule-Walker_Coeffs':
+                    # ---- AR Coeff: Yule-Walker needs extra_arg = {"AR_model_order"} ---------
+                elif method == 'AR_Yule-Walker_Coeffs':
                     model_order = extra_args["AR_model_order"]
                     ar_coeffs, var, reflec = aryule(datum, model_order)
                     features = ar_coeffs
                     feature_labels = np.arange(1, model_order+1)
-                elif method == 'Yule-Walker_PSD':
-                    print()
+                    # ---- AR PSD: Yule-Walker needs extra_arg = {"AR_model_order" ; "fft_length"} ---------
+                elif method == 'AR_Yule-Walker_PSD':
+                    model_order = extra_args["AR_model_order"]
+                    fft_length = extra_args["fft_length"]
+                    p = pyule(datum, model_order, NFFT = fft_length, sampling = sampling_freq)
+                    f = p.frequencies()
+                    Pxx = p.psd
+                    idx = np.argwhere((f>=2) & (f<=40.25))[:,0]
+                    features = Pxx[idx] 
+                    feature_labels = f[idx]
                     #      print("# of extracted features: {}".format(len(idx)))
+                    
                 tmp_array.append(features)
             features_array.append(tmp_array)
             start_idx = end_idx
