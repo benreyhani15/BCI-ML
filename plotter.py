@@ -76,7 +76,7 @@ def plot_multivariable_scatter(df, ylabel, title):
     plt.figure()
     xlabel = df.columns[0]
     for i in np.arange(1, len(df.columns)):    
-        plt.plot(xlabel, df.columns[i], data=df, marker='o', markerfacecolor='green', markersize=6, linewidth=4)
+        plt.plot(xlabel, df.columns[i], data=df, markerfacecolor='green', markersize=4, linewidth=3)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)

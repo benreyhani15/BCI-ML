@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import periodogram, get_window, welch
 import preprocessing as pre
 import data_loader as dl
-from spectrum import aryule, pyule
+from spectrum import aryule, pyule, pburg
 
 def extract_features(data, method, extra_args, segments_per_trial, min_time = 4, max_time = 6, sampling_freq = 250, window_duration = 2):
     features_array = []
@@ -58,13 +58,22 @@ def extract_features(data, method, extra_args, segments_per_trial, min_time = 4,
                     model_order = extra_args["AR_model_order"]
                     fft_length = extra_args["fft_length"]
                     p = pyule(datum, model_order, NFFT = fft_length, sampling = sampling_freq)
-                    f = p.frequencies()
+                    f = np.asarray(p.frequencies())
                     Pxx = p.psd
                     idx = np.argwhere((f>=2) & (f<=40.25))[:,0]
                     features = Pxx[idx] 
                     feature_labels = f[idx]
                     #      print("# of extracted features: {}".format(len(idx)))
-                    
+                    # ---- AR PSD: Burg needs extra_arg = {"AR_model_order" ; "fft_length"} ---------
+                elif method == 'AR_Burg_PSD':
+                    model_order = extra_args["AR_model_order"]
+                    fft_length = extra_args["fft_length"]
+                    p = pburg(datum, model_order, NFFT = fft_length, sampling = sampling_freq)
+                    f = np.asarray(p.frequencies())
+                    Pxx = p.psd
+                    idx = np.argwhere((f>=2) & (f<=40.25))[:,0]
+                    features = Pxx[idx] 
+                    feature_labels = f[idx]
                 tmp_array.append(features)
             features_array.append(tmp_array)
             start_idx = end_idx
@@ -97,6 +106,7 @@ def extract_coeff_features(labels, ica_data, method, extra_args, min_time = 4, m
     labels = np.repeat(labels, segments_per_trial)
     X, coeff_labels = extract_features(ica_data, method, extra_args, segments_per_trial, min_time = min_time, max_time = max_time, 
                                 sampling_freq = sampling_freq, window_duration = window_duration)
+    print("X: {}, y: {}".format(X.shape, labels.shape))
     return X, labels, coeff_labels
 
 if __name__ == "__main__":
