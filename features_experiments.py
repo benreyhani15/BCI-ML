@@ -5,35 +5,7 @@ import numpy as np
 import pandas as pd
 from feature_extraction import extract_psd_features, extract_coeff_features
 import matplotlib.pyplot as plt
-
-def analyze_feature_performance(independent_var_label, independent_var, test_accs, train_accs, features_used, variable_array, title, orig_feature_count, 
-                                metrics_computed = ['test', 'train', 'features']):
-    if 'test' in metrics_computed: df_test_acc = pd.DataFrame({independent_var_label: independent_var})
-    if 'train' in metrics_computed: df_train_acc = pd.DataFrame({independent_var_label: independent_var})
-    if 'features' in metrics_computed: df_features = pd.DataFrame({independent_var_label: independent_var})
-    
-    for i, content in enumerate(variable_array):
-        if 'test' in metrics_computed: df_test_acc[content] = test_accs[i]
-        if 'train' in metrics_computed: df_train_acc[content] = train_accs[i]
-        if 'features' in metrics_computed: df_features[content] = features_used[i]
-    
-    if 'test' in metrics_computed:
-        print("Test Classification")
-        plotter.plot_multivariable_scatter(df_test_acc, 'Classification Accuracy (%)', r"{}: Test Classification Accuracy".format(title))
-        for i, content in enumerate(variable_array):
-            print("{} Stats: mean={:.2f}%, max={:.2f}%".format(content, test_accs[i].mean(), test_accs[i].max()))
-    
-    if 'train' in metrics_computed:
-        print("Train Classification")
-        plotter.plot_multivariable_scatter(df_train_acc, 'Classification Accuracy (%)', r"{}: Train Classification Accuracy".format(title))
-        for i, content in enumerate(variable_array):
-            print("{} Stats: mean={:.2f}%, max={:.2f}%".format(content, train_accs[i].mean(), train_accs[i].max()))
-    
-    if 'features' in metrics_computed:
-        print("Features Used")
-        plotter.plot_multivariable_scatter(df_features, 'Number of Features Used', r"{}: Fraction of {} Original Features Used".format(title, orig_feature_count))
-        for i, content in enumerate(variable_array):
-            print("{} Stats: max={}, min={}".format(content, features_used[i].max(), features_used[i].min()))
+from analyzer import analyze_feature_performance
         
 # Experiment to see the effects of classification accuracy using different time windows for classification
 def periodogram_classification_duration_comparison(y_train, y_test, ica_train, ica_test, window_durations, window = 'boxcar', freq_prec = 1):

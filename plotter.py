@@ -70,6 +70,14 @@ def plot_scatter_2_independent_vars(dependent_var, independent_var, ticks1, tick
     ax2.set_xlabel(x_label2)
     plt.title(title, y=1.15)
     plt.show()
+
+def plot_scatter(y_var, x_var, title, y_label, x_label):
+    fig = plt.figure()
+    plt.plot(x_var, y_var)
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.show()
     
 def plot_multivariable_scatter(df, ylabel, title):
     # Assume first column is df is independent value and xlabel
