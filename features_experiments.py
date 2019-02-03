@@ -74,11 +74,11 @@ def AR_model_order_comparison(y_train, y_test, ica_train, ica_test, classificati
     y_test_array = []
     feature_labels = []
     
-    #model_orders = [11, 22, 26, 33]
-    model_orders = np.arange(3, 40, 1)
-    C = np.linspace(0.001, 0.1, 100)
+    #model_orders = [16, 29,  34]
+    model_orders = np.arange(23, 50, 1)
+    #C = np.linspace(0.001, 0.1, 100)
     #C = [0.001, 0.005, 0.01,  0.05,  0.1, 0.5, 1, 5, 10, 30, 50, 75, 100, 200, 350, 500, 650, 800, 1000]
-    #C = np.linspace(0.01, 1, 300)
+    C = np.linspace(0.01, 1, 300)
     #C = np.linspace(20, 1000, 500)
     #C = np.arange(2, 500)
     #C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000]
@@ -142,7 +142,7 @@ def periodogram_window_comparison(y_train, y_test, ica_train, ica_test, classifi
         freqs.append(freq)
         var_array.append(window)
            
-    C = np.linspace(0.004, 0.1, 100)
+    C = np.linspace(0.001, 1, 500)
     num_ica_comps = ica_train.shape[0]
     train_accs, test_accs, features_used = classifier.evaluate_multiple_linsvms_for_comparison(np.asarray(X_train_array), np.asarray(X_test_array),
                                                         np.asarray(y_train_array), np.asarray(y_test_array), 
@@ -276,21 +276,22 @@ if __name__ == "__main__":
     path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A'
     directory = path + '1'
     
-    rejected_trials, eeg_train, eeg_test, eeg_trainfil, eeg_testfil, y_train, y_test = dl.load_dataset(directory)
+    #rejected_trials, eeg_train, eeg_test, eeg_trainfil, eeg_testfil, y_train, y_test = dl.load_dataset(directory)
     
     # Exclude rejected trials from train set
     #y_train = np.delete(y_train, rejected_trials)
     #eeg_trainfil = np.delete(eeg_trainfil, rejected_trials, axis=2)
     
+    eeg_train, y_train, eeg_test, y_test = dl.load_pertinent_dataset(directory)
     # Run it for 3 class problems (hands and feet)
-    y_train, eeg_train = pre.extract_3_class(y_train, eeg_trainfil)
+    y_train, eeg_train = pre.extract_3_class(y_train, eeg_train)
     y_test, eeg_test = pre.extract_3_class(y_test, eeg_test)
-    y_test, eeg_testfil = pre.extract_3_class(y_test, eeg_testfil)
+   # y_test, eeg_testfil = pre.extract_3_class(y_test, eeg_testfil)
     
-    ica_test = pre.ica(directory, eeg_test, algorithm='extended-infomax')
-    ica_train = pre.ica(directory, eeg_train, algorithm='extended-infomax')
+    ica_test = pre.ica(directory, eeg_test)
+    ica_train = pre.ica(directory, eeg_train)
    
-    TEST_TYPE = 'AR_burg_psd_model_order_comparison'
+    TEST_TYPE = 'periodogram_window_comparison'
     if TEST_TYPE == 'periodogram_dur_comparison':
         #print("periodogram")
         periodogram_window_durations = [2, 1, 0.5, .25]
@@ -302,9 +303,9 @@ if __name__ == "__main__":
         welch_window_duration_comparison(y_train, y_test, ica_train, ica_test, classification_window_duration, welch_window_durations, window = 'kaiser (9)')
     elif TEST_TYPE == 'periodogram_window_comparison':
         #windows = ['boxcar', 'hamming' ,]
-        windows = ['boxcar', 'hamming', 'kaiser (7)', 'kaiser (10)', 'kaiser (14)']
+        windows = ['boxcar', 'hamming', 'kaiser (14)']
         #periodogram_window_comparison(y_train, y_test, ica_train, ica_test, 2, windows, freq_prec = 1)
-        periodogram_window_comparison(y_train, y_test, ica_train, ica_test, 1, windows, freq_prec = 1)
+        periodogram_window_comparison(y_train, y_test, ica_train, ica_test, 2, windows, freq_prec = 1)
         #periodogram_window_comparison(y_train, y_test, ica_train, ica_test, 0.5, windows, freq_prec = 1)
         #periodogram_window_comparison(y_train, y_test, ica_train, ica_test, 0.25, windows, freq_prec = 1)
     elif TEST_TYPE == 'periodogram_dp_comparison':
@@ -317,6 +318,8 @@ if __name__ == "__main__":
         train_accs, test_accs2, features_used = AR_model_order_comparison(y_train, y_test, ica_train, ica_test, 0.5, 'AR_Yule-Walker_PSD', use_psd_features = True)
     elif TEST_TYPE == 'AR_burg_psd_model_order_comparison':
         train_accs, test_accs2, features_used = AR_model_order_comparison(y_train, y_test, ica_train, ica_test, 2, 'AR_Burg_PSD', use_psd_features = True)
+    elif TEST_TYPE == 'AR_covar_psd_model_order_comparison':
+        train_accs, test_accs2, features_used = AR_model_order_comparison(y_train, y_test, ica_train, ica_test, 2, 'AR_Covar_PSD', use_psd_features = True)
     elif TEST_TYPE == 'AR_dp_comparison':
         model_orders = [11, 16, 21, 26]
         accs = []

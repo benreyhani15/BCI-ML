@@ -6,8 +6,8 @@ from sklearn import preprocessing
 import data_loader
 from sklearn.feature_selection import VarianceThreshold
 
-def compute_ica(path, eeg, algorithm):
-    sphere, ica_weights = data_loader.load_ica_mats(path, algorithm)    
+def compute_ica(path, eeg):
+    sphere, ica_weights = data_loader.load_ica_mats(path)    
     ica_data = (np.dot(ica_weights, np.dot(sphere, eeg.reshape(eeg.shape[0], eeg.shape[1]*eeg.shape[2])))).reshape(ica_weights.shape[0], eeg.shape[1], eeg.shape[2])
     return ica_data
 
@@ -19,8 +19,8 @@ def check_trainica_comp(path, ica_computed, is_filtered):
     residual = np.abs(ica_computed-ica_actual)
     print("ICA diff: mean: {}, max: {}, var: {}\n".format(residual.mean(), residual.max(), residual.var()))
     
-def ica(path, eeg, algorithm = 'extended-infomax'):
-    ica_data = compute_ica(path, eeg, algorithm)
+def ica(path, eeg):
+    ica_data = compute_ica(path, eeg)
     return ica_data
 
 def standardise_data(data):

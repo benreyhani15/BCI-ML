@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import periodogram, get_window, welch
 import preprocessing as pre
 import data_loader as dl
-from spectrum import aryule, pyule, pburg
+from spectrum import aryule, pyule, pburg, pcovar
 
 def extract_features(data, method, extra_args, segments_per_trial, min_time = 4, max_time = 6, sampling_freq = 250, window_duration = 2):
     features_array = []
@@ -69,6 +69,16 @@ def extract_features(data, method, extra_args, segments_per_trial, min_time = 4,
                     model_order = extra_args["AR_model_order"]
                     fft_length = extra_args["fft_length"]
                     p = pburg(datum, model_order, NFFT = fft_length, sampling = sampling_freq)
+                    f = np.asarray(p.frequencies())
+                    Pxx = p.psd
+                    idx = np.argwhere((f>=2) & (f<=40.25))[:,0]
+                    features = Pxx[idx] 
+                    feature_labels = f[idx]
+                    # ---- AR PSD: Covar needs extra_arg = {"AR_model_order" ; "fft_length"} ---------
+                elif method == 'AR_Covar_PSD':
+                    model_order = extra_args["AR_model_order"]
+                    fft_length = extra_args["fft_length"]
+                    p = pcovar(datum, model_order, NFFT = fft_length, sampling = sampling_freq)
                     f = np.asarray(p.frequencies())
                     Pxx = p.psd
                     idx = np.argwhere((f>=2) & (f<=40.25))[:,0]

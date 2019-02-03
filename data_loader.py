@@ -23,8 +23,8 @@ def load_pertinentEEGdataset(path):
     eeg_test = sp.io.loadmat(os.path.join(path,'testeeg'))['eeg']
     eeg_test = eeg_test[0:22]  
     
-    reject_idx = sp.io.loadmat(os.path.join(path, 'reject_idx'))['reject_idx']
-    return eeg_train_filtered, eeg_test, reject_idx
+    #reject_idx = sp.io.loadmat(os.path.join(path, 'reject_idx'))['reject_idx']
+    return eeg_train_filtered, eeg_test
 
 def load_EEGdataset_using_MNE(path):
     # Are not epoched or filtered : BROKEN FOR BCI COMP DATA SET (CANT EXTRACT EPOCHS PROPERLY)
@@ -38,9 +38,9 @@ def load_EEGdataset_using_MNE(path):
     """
     
 # Algorithm can take on values: 'extended-infomax', 'sobi', 'jade'
-def load_ica_mats(path, algorithm):
+def load_ica_mats(path):
     sphere = sp.io.loadmat(os.path.join(path,'ica_sphere'))['ica_sphere']
-    ica_weights = sp.io.loadmat(os.path.join(path, algorithm))['ica_weights']
+    ica_weights = sp.io.loadmat(os.path.join(path, 'ica_weights'))['ica_weights']
     return sphere, ica_weights
 
 def load_labels(path):
@@ -58,3 +58,8 @@ def load_dataset(path):
     rejected_idx, eeg_train, eeg_test, eeg_train_filt, eeg_test_filt = load_EEGdataset_using_MAT(path)
     y_train, y_test = load_labels(path)
     return rejected_idx, eeg_train, eeg_test, eeg_train_filt, eeg_test_filt, y_train, y_test
+
+def load_pertinent_dataset(path):
+    eeg_train, eeg_test = load_pertinentEEGdataset(path)
+    y_train, y_test = load_labels(path)
+    return eeg_train, y_train, eeg_test, y_test
