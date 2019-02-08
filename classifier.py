@@ -80,8 +80,8 @@ if __name__ == '__main__':
     ica_test = pre.ica(directory, eeg_test)
     ica_train = pre.ica(directory, eeg_train)
     
-    C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000]
-    #C = np.linspace(0.001, 0.1, 100)
+    #C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000]
+    C = np.linspace(0.001, 0.1, 100)
     param_grid_linsvm = {'C': C}
     
     method = 'Periodogram_PSD'
@@ -90,9 +90,9 @@ if __name__ == '__main__':
         extra_args['window'] = 'boxcar'
         
     X_train, y_train, freqs = fe.extract_psd_features(y_train, ica_train, method, extra_args, fft_length = 1024, min_time = 4, max_time = 6, 
-                                                sampling_freq = 250, window_duration = 0.5, frequency_precision = 1, compute_multiple_segs_per_trial = False)
+                                                sampling_freq = 250, window_duration = 0.5, frequency_precision = 1, compute_multiple_segs_per_trial = True)
     X_test, y_test, freqs = fe.extract_psd_features(y_test, ica_test, method, extra_args, fft_length = 1024, min_time = 4, max_time = 6, 
-                                                sampling_freq = 250, window_duration = 0.5, frequency_precision = 1, compute_multiple_segs_per_trial = False)
+                                                sampling_freq = 250, window_duration = 0.5, frequency_precision = 1, compute_multiple_segs_per_trial = True)
     
     # 1) Linear SVM with 'l1' penalty
     
@@ -100,24 +100,21 @@ if __name__ == '__main__':
     scores_10, c_10 = find_linear_SVM(X_train, y_train, param_grid_linsvm, 'l1', 'squared_hinge', False, "L1 SVM", folds=10)
     scores_5, c_5 = find_linear_SVM(X_train, y_train, param_grid_linsvm, 'l1', 'squared_hinge', False, "L1 SVM", folds=5)
     scores_20, c_20 = find_linear_SVM(X_train, y_train, param_grid_linsvm, 'l1', 'squared_hinge', False, "L1 SVM", folds=20)
-    scores_40, c_40 = find_linear_SVM(X_train, y_train, param_grid_linsvm, 'l1', 'squared_hinge', False, "L1 SVM", folds=40)
     train_accs, scores_actual, features = evaluate_multiple_linsvms_for_comparison([X_train], [X_test], [y_train], [y_test], freqs, method, C, 22)
     c_actual = C[scores_actual.argmax()]
-    scores_array = [np.round(scores_5*100, 2), np.round(scores_10*100, 2), np.round(scores_20*100, 2), np.round(scores_40*100, 2), scores_actual[0]]
-    analyze_feature_performance('C', C, scores_array, train_accs, features, ['5 Fold CV', '10 Fold CV', '20 Fold CV', '40 Fold CV', 'Actual'], 
+    scores_array = [np.round(scores_5*100, 2), np.round(scores_10*100, 2), np.round(scores_20*100, 2), scores_actual[0]]
+    analyze_feature_performance('C', C, scores_array, train_accs, features, ['5 Fold CV', '10 Fold CV', '20 Fold CV', 'Actual'], 
                                 'A01: 0.5 Second Linear l1 SVM Classification using Periodogram (Boxcar) PSD Features', 1000, metrics_computed = ['test'])
-    '''
+    
     print("5 Fold CV, C: {}".format(c_5))
     evaluate_linear_SVM(X_train, y_train, X_test, y_test, 'squared_hinge', 'l1', c_5['C'], freqs, method, 22, just_ac=False)
     print("10 Fold CV, C: {}".format(c_10))
     evaluate_linear_SVM(X_train, y_train, X_test, y_test, 'squared_hinge', 'l1', c_10['C'], freqs, method, 22, just_ac=False)
     print("20 Fold CV, C: {}".format(c_20))
     evaluate_linear_SVM(X_train, y_train, X_test, y_test, 'squared_hinge', 'l1', c_20['C'], freqs, method, 22, just_ac=False)
-    print("40 Fold CV, C: {}".format(c_40))
-    evaluate_linear_SVM(X_train, y_train, X_test, y_test, 'squared_hinge', 'l1', c_40['C'], freqs, method, 22, just_ac=False)
     print("Actual, C: {}".format(c_actual))
     evaluate_linear_SVM(X_train, y_train, X_test, y_test, 'squared_hinge', 'l1', c_actual, freqs, method, 22, just_ac=False)
-    '''
+
      # b) Evaluate various classifiers trained on different amount of features using CV
     
    #for idx, c in enumerate(C):
