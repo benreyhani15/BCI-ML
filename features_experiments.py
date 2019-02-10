@@ -263,7 +263,7 @@ if __name__ == "__main__":
     ica_test = pre.ica(directory, eeg_test)
     ica_train = pre.ica(directory, eeg_train)
    
-    TEST_TYPE = 'periodogram_window_comparison'
+    TEST_TYPE = 'periodogram_dp_comparison'
     if TEST_TYPE == 'periodogram_dur_comparison':
         #print("periodogram")
         periodogram_window_durations = [2, 1, 0.5, .25]
@@ -275,9 +275,9 @@ if __name__ == "__main__":
         welch_window_duration_comparison(y_train, y_test, ica_train, ica_test, classification_window_duration, welch_window_durations, window = 'kaiser (9)')
     elif TEST_TYPE == 'periodogram_window_comparison':
         #windows = ['boxcar', 'hamming' ,]
-        windows = ['boxcar', 'hamming', 'kaiser (14)']
+        windows = ['boxcar', 'hamming', 'kaiser (9)', 'kaiser (14)']
         #periodogram_window_comparison(y_train, y_test, ica_train, ica_test, 2, windows, freq_prec = 1)
-        periodogram_window_comparison(y_train, y_test, ica_train, ica_test, 2, windows, freq_prec = 1)
+        periodogram_window_comparison(y_train, y_test, ica_train, ica_test, 1, windows, freq_prec = 1)
         #periodogram_window_comparison(y_train, y_test, ica_train, ica_test, 0.5, windows, freq_prec = 1)
         #periodogram_window_comparison(y_train, y_test, ica_train, ica_test, 0.25, windows, freq_prec = 1)
     elif TEST_TYPE == 'periodogram_dp_comparison':
