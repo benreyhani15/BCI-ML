@@ -64,7 +64,27 @@ def analyze_features(weights, freqs, num_ica_comps):
     summary = "Minimum Important freq: {}, Max important freq: {}, Useless components: {}".format(min_relevant_freq, max_relevant_freq, useless_components)
     print(summary)
     
-              
+def get_feature_importances(svm, classes, num_ica_comps, feature_type, feature_labels):
+    weights = svm.coef_
+    feature_importance = np.abs(weights)
+    ica_comps = np.tile(np.repeat(np.arange(num_ica_comps), len(feature_labels)), len(classes))
+    features = np.tile(np.tile(feature_labels, num_ica_comps), len(classes))
+    labels = []
+    targets = []
+    for index, class_label in enumerate(classes):
+        labels.append(np.repeat(class_label, feature_importance.shape[1]))
+        targets.append(np.repeat(index+1, feature_importance.shape[1]))
+    labels = np.asarray(labels).flatten()
+    targets = np.asarray(targets).flatten()
+    sums = np.reshape(feature_importance.sum(axis=1), (feature_importance.shape[0], 1))
+    percent_importance = (np.divide(feature_importance, sums) * 100).flatten()
+    pandas_dict = {"Class label": labels, "Targets" : targets, "ICA Comp" : ica_comps, feature_type: features, "Feature Importance":feature_importance.flatten(), "Percent Importance" : percent_importance}
+    print("class labels: {}, targets: {}, ica_comps: {}, feature_type: {}, feature_importances: {}".format(labels.shape, targets.shape, ica_comps.shape, features.shape, feature_importance.flatten().shape))
+    return pd.DataFrame(pandas_dict)
+
+def extract_rows_from_pd_df_column(data_frame, column_key, column_value):
+    return data_frame.loc[data_frame[column_key] == column_value]
+
 def find_useful_features(weights):
      means = weights.mean(axis=0)
      idx_meanzeroes = np.argwhere(means == 0)
