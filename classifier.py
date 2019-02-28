@@ -13,6 +13,9 @@ from analyzer import analyze_feature_performance
 
 path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A'
 
+def kfold_cv_w_feature_selection(classifier, X_train, y_train, param_grid, folds = 10):
+    print()
+
 def kfold_cv(classifier, X_train, y_train, param_grid, send_notif, title, folds=10):
     grid_search = GridSearchCV(classifier, param_grid, cv=folds)
     grid_search.fit(X_train, y_train)
@@ -68,7 +71,7 @@ def evaluate_multiple_linsvms_for_comparison(X_train_array, X_test_array, y_trai
     return train_accs, test_accs, features_used
 
 if __name__ == '__main__':
-    path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A'
+    path = '/Users/benreyhani/Files/GradSchool/BCISoftware/main/BCI/Dataset/A'
     directory = path + '1'
         
     eeg_train, y_train, eeg_test, y_test = dl.load_pertinent_dataset(directory)
@@ -81,14 +84,25 @@ if __name__ == '__main__':
     ica_train = pre.ica(directory, eeg_train)
     
     #C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000]
-    C = np.linspace(0.001, 0.1, 100)
+    C = np.linspace(0.001, 0.05, 10)
     param_grid_linsvm = {'C': C}
     
+    '''
     method = 'Periodogram_PSD'
     extra_args = {}
     if method == 'Periodogram_PSD':
         extra_args['window'] = 'boxcar'
+    '''
+    X_train, y_train, freqs = fe.extract_cwt_morlet_features(y_train, ica_train)
+    X_test, y_test, freqs = fe.extract_cwt_morlet_features(y_test, ica_test)
         
+    test_accs = np.zeros((len(C)))
+    for idx, c in enumerate(C):
+        test_accs[idx], classifier, tmp = evaluate_linear_SVM(X_train, y_train, X_test, y_test, 'squared_hinge', 'l1', c, freqs,
+                     'TFR', 22, just_ac = False) 
+        useful, useless = analyzer.find_useful_features(classifier.coef_)
+    
+    '''    
     X_train, y_train, freqs = fe.extract_psd_features(y_train, ica_train, method, extra_args, fft_length = 1024, min_time = 4, max_time = 6, 
                                                 sampling_freq = 250, window_duration = 0.5, frequency_precision = 1, compute_multiple_segs_per_trial = True)
     X_test, y_test, freqs = fe.extract_psd_features(y_test, ica_test, method, extra_args, fft_length = 1024, min_time = 4, max_time = 6, 
@@ -127,3 +141,4 @@ if __name__ == '__main__':
     # 2) Use best classifier (reduced features) and reduce features by using filtering by rank and semi-manual component analysis 
     
     # 3) RBF Kernel SVM with reduced features
+    '''

@@ -245,7 +245,7 @@ def compare_AR_model_order_vs_test_class_accuracy(y_train, y_test, ica_train, ic
 
 if __name__ == "__main__":
 
-    path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A'
+    path = '/Users/benreyhani/Files/GradSchool/BCISoftware/main/BCI/Dataset/A'
     directory = path + '1'
     
     #rejected_trials, eeg_train, eeg_test, eeg_trainfil, eeg_testfil, y_train, y_test = dl.load_dataset(directory)

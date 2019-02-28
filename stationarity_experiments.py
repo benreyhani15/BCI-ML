@@ -2,8 +2,11 @@ import preprocessing as pre
 import data_loader as dl
 from statsmodels.tsa.stattools import adfuller, kpss
 import numpy as np
-    
-def run_stationarity_tests(X, y, window_duration, method, min_time = 4, max_time = 6, sampling_freq = 250, compute_multiple_segs_per_trial = True):
+from mne.time_frequency import tfr_morlet
+from mne import EpochsArray, create_info
+
+
+def run_stationarity_tests(X, window_duration, method, min_time = 4, max_time = 6, sampling_freq = 250, compute_multiple_segs_per_trial = True):
     segments_per_trial = (int)((max_time-min_time)/window_duration) if compute_multiple_segs_per_trial else 1
     test_stat_array = np.zeros(X.shape[0])
     p_array = np.zeros(X.shape[0])
@@ -36,11 +39,32 @@ def obtain_stationarity_test_results_per_class(X, y, window_duration, method, mi
     for value, label in enumerate(labels):
         idx = np.argwhere(y == label)
         X_tmp = X[:, :, idx]
-        y_tmp = y[idx]
-        test_stat_array[value], p_array[value] = run_stationarity_tests(X_tmp, y_tmp, window_duration, method, min_time = min_time, max_time = max_time, 
+        test_stat_array[value], p_array[value] = run_stationarity_tests(X_tmp, window_duration, method, min_time = min_time, max_time = max_time, 
                        sampling_freq = sampling_freq, compute_multiple_segs_per_trial = get_multiple_segs_per_trial)
+    
     return test_stat_array, p_array
     
+def plot_avg_morlet_cwt(X, y, freqs = np.arange(3, 41), min_time = 0, max_time = 7, sampling_freq = 250, cycles = 7, 
+                        classes = {'left':1, 'right':2, 'feet':3}, components = [], freq_res = 1):
+    # For MNE: needs to be in form (epochs, channels, time_points)
+    X = X[:, (min_time*sampling_freq):(max_time*sampling_freq), :]
+    X = np.transpose(X, (2, 0, 1))
+    info = create_info(X.shape[1], sampling_freq, 'eeg')
+    for class_label in classes:
+        print(class_label)
+        idx = np.argwhere(y == classes[class_label])[0]
+        X_tmp = X[idx, :, :]
+        print(X_tmp.shape)
+        epoched_data = EpochsArray(X_tmp, info)
+        avg_power = tfr_morlet(epoched_data, freqs, cycles, return_itc = False, decim = freq_res)
+        if len(components) == 0:
+            components = np.arange(X.shape[1])
+        for comp in components:
+            print()
+            title = "For %s and Component: %s" % (class_label, comp)
+            avg_power.plot(picks = [comp], title = title)
+        
+        
 if __name__ == '__main__':
     path = '/Users/benreyhani/Files/GradSchool/BCISoftware/main/BCI/Dataset/A'
     directory = path + '1'
@@ -54,15 +78,18 @@ if __name__ == '__main__':
     ica_test = pre.ica(directory, eeg_test)
     ica_train = pre.ica(directory, eeg_train)
     
-    eeg = np.concatenate((eeg_train, eeg_test), axis=2)
-    ica = np.concatenate((ica_train, ica_test), axis=2)
-    y = np.concatenate((y_train, y_test), axis=0)
+    plot_avg_morlet_cwt(ica_train, y_train, min_time = 4, max_time = 6, cycles = 3)
+    # For MNE: needs to be in form (epochs, channels, time_points)
+    #np.transpose(X, (2, 0, 1))
+    #plot_avg_morlet_cwt()
     
-    eeg_stats_adfuller, eeg_p_adfuller = obtain_stationarity_test_results_per_class(eeg, y, 2, 'adfuller')
-    ica_stats_adfuller, ica_p_adfuller = obtain_stationarity_test_results_per_class(ica, y, 2, 'adfuller')
-    eeg_stats_kpss, eeg_p_kpss = obtain_stationarity_test_results_per_class(eeg, y, 2, 'kpss')
-    ica_stats_kpss, ica_p_kpss = obtain_stationarity_test_results_per_class(ica, y, 2, 'kpss')
+    #eeg = np.concatenate((eeg_train, eeg_test), axis=2)
+    #ica = np.concatenate((ica_train, ica_test), axis=2)
+    #y = np.concatenate((y_train, y_test), axis=0)
+    
+    #eeg_stats_adfuller, eeg_p_adfuller = obtain_stationarity_test_results_per_class(eeg, y, 2, 'adfuller')
+    #ica_stats_adfuller, ica_p_adfuller = obtain_stationarity_test_results_per_class(ica, y, 2, 'adfuller')
+    #eeg_stats_kpss, eeg_p_kpss = obtain_stationarity_test_results_per_class(eeg, y, 2, 'kpss')
+    #ica_stats_kpss, ica_p_kpss = obtain_stationarity_test_results_per_class(ica, y, 2, 'kpss')
 
     # TODO: Get rid of rejected trials for analysis ? 
-    
-    

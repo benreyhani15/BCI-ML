@@ -3,6 +3,7 @@ from scipy.signal import periodogram, get_window, welch
 import preprocessing as pre
 import data_loader as dl
 from spectrum import aryule, pyule, pburg, pcovar
+from mne.time_frequency import tfr_array_morlet
 
 def extract_features(data, method, extra_args, segments_per_trial, min_time = 4, max_time = 6, sampling_freq = 250, window_duration = 2):
     features_array = []
@@ -110,6 +111,16 @@ def extract_psd_features(labels, ica_data, method, extra_args, fft_length = 1024
     freqs_red = freqs.reshape(-1, freq_reduction).mean(axis=1)
     return X_red, labels, freqs_red
 
+def extract_cwt_morlet_features(labels, cont_data, freqs = np.arange(3, 41), min_time = 4, max_time = 6, sampling_freq = 250, 
+                                cycles = 3, frequency_res = 1):
+    # For MNE: needs to be in form (epochs, channels, time_points)
+    X = cont_data[:, (min_time*sampling_freq):(max_time*sampling_freq), :]
+    print((X.shape))
+    X = np.transpose(X, (2, 0, 1))
+    features = tfr_array_morlet(X, sampling_freq, freqs, n_cycles = cycles, zero_mean = True, 
+                                      output = 'power', decim = frequency_res)    
+    return features.reshape(features.shape[0], features.shape[1]*features.shape[2]*features.shape[3]), labels, freqs
+
 def extract_coeff_features(labels, ica_data, method, extra_args, min_time = 4, max_time = 6, sampling_freq = 250, window_duration = 2,
                                compute_multiple_segs_per_trial = True):
     segments_per_trial = (int)((max_time-min_time)/window_duration) if compute_multiple_segs_per_trial else 1
@@ -118,6 +129,19 @@ def extract_coeff_features(labels, ica_data, method, extra_args, min_time = 4, m
                                 sampling_freq = sampling_freq, window_duration = window_duration)
     print("X: {}, y: {}".format(X.shape, labels.shape))
     return X, labels, coeff_labels
+
+def extract_specific_cwt_morlet_features(labels, cont_data, freqs, target_class, min_time = 4, max_time = 6, sampling_freq = 250, 
+                                         cycles = 3, frequency_res = 1):
+    if target_class not in labels: 
+        print("Error with target class")
+        return
+    idx = np.where(labels == target_class)[0]
+    # For MNE: needs to be in form (epochs, channels, time_points)
+    X = cont_data[:, (min_time*sampling_freq):(max_time*sampling_freq), idx]
+    X = np.transpose(X, (2, 0, 1))
+    tfr = tfr_array_morlet(X, sampling_freq, freqs, n_cycles = cycles, zero_mean = True,
+                           output = 'power', decim = frequency_res)
+    return tfr
 
 if __name__ == "__main__":
     # Testing different PSD estimating techniques for short data samples
