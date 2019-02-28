@@ -39,7 +39,7 @@ def select_k_using_recursive(X_train, y_train, num_features, classifier):
     selector = rfe.fit(X_train, y_train)
     return selector.transform(X_train), selector
                              
-def feature_selection_stats_test(y_train, y_test, X_train, X_test, freqs, ar_model, use_percents = True):
+def feature_selection_stats_test(y_train, y_test, X_train, X_test, freq, ar_model, use_percents = True):
     X_train_array = []
     y_train_array = []
     X_test_array = []
@@ -78,7 +78,7 @@ def feature_selection_stats_test(y_train, y_test, X_train, X_test, freqs, ar_mod
     C = np.linspace(0.001, .1, 100)
     #C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000]
     #C = [ 1, 2.5, 5, 10, 20, 30, 50, 100, 500, 1000]
-    num_ica_comps = ica_train.shape[0]
+    num_ica_comps = X_train.shape[1]/len(freq)
 
     train_accs, test_accs, features_used = classifier.evaluate_multiple_linsvms_for_comparison(X_train_array, X_test_array,
                                                         y_train_array, y_test_array, 
@@ -88,7 +88,7 @@ def feature_selection_stats_test(y_train, y_test, X_train, X_test, freqs, ar_mod
     analyze_feature_performance('C', C, test_accs, train_accs, features_used, var_array, title, X_train_array[0].shape[1])
     return test_accs
 
-def feature_selection_RFE_test(y_train, y_test, X_train, X_test, freqs):
+def feature_selection_RFE_test(y_train, y_test, X_train, X_test, freq):
     X_train_array = []
     y_train_array = []
     X_test_array = []
@@ -119,7 +119,7 @@ def feature_selection_RFE_test(y_train, y_test, X_train, X_test, freqs):
         
     C = np.linspace(0.001, .1, 100)
     #C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000]
-    num_ica_comps = ica_train.shape[0]
+    num_ica_comps = X_train.shape[1]/len(freq)
 
     train_accs, test_accs, features_used = classifier.evaluate_multiple_linsvms_for_comparison(X_train_array, X_test_array,
                                                         y_train_array, y_test_array, 
@@ -148,8 +148,8 @@ if __name__ == '__main__':
     #X_train, y_train, freq = extract_psd_features(y_train, ica_train, 'Periodogram_PSD', extra_args, window_duration = 1)
     #X_test, y_test, freq = extract_psd_features(y_test, ica_test, 'Periodogram_PSD', extra_args, window_duration = 1)
     
-
-    extra_args["AR_model_order"] = 28 
+    order = 28
+    extra_args["AR_model_order"] = order 
     X_train, y_train, freq = extract_psd_features(y_train, ica_train, 'AR_Burg_PSD', extra_args, window_duration = 2)
     X_test, y_test, freq = extract_psd_features(y_test, ica_test, 'AR_Burg_PSD', extra_args, window_duration = 2)
     test_accs = feature_selection_stats_test(y_train, y_test, X_train, X_test, freq, order, use_percents = False)
