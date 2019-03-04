@@ -160,3 +160,4 @@ if __name__ == "__main__":
     
     ica_test = pre.ica(directory, eeg_test, algorithm='extended-infomax')
     ica_train = pre.ica(directory, eeg_train, algorithm='extended-infomax')
+    

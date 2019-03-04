@@ -7,14 +7,21 @@ from mne import EpochsArray, create_info
 
 
 def run_stationarity_tests(X, window_duration, method, min_time = 4, max_time = 6, sampling_freq = 250, compute_multiple_segs_per_trial = True):
+import feature_extraction as fe
+import classifier
+    
+def run_stationarity_tests(X, y, window_duration, method, min_time = 4, max_time = 6, sampling_freq = 250, compute_multiple_segs_per_trial = True):
+>>>>>>> Stashed changes
     segments_per_trial = (int)((max_time-min_time)/window_duration) if compute_multiple_segs_per_trial else 1
     test_stat_array = np.zeros(X.shape[0])
     p_array = np.zeros(X.shape[0])
     delta = (int)(window_duration*sampling_freq)
+    count = 0
     for i in np.arange(X.shape[2]):
         #print("\n\ncomputing values for data sample: {}".format(i)) 
         start_idx = (int)(sampling_freq * min_time)
         for k in np.arange(segments_per_trial):
+            count = count + 1
             #print("For data segment: {}".format(k))
             for j in np.arange(X.shape[0]):
                 #print("Working on component: {}".format(j))
@@ -29,7 +36,8 @@ def run_stationarity_tests(X, window_duration, method, min_time = 4, max_time = 
                     tau, p = kpss(datum[:, 0])[0:2]
                 test_stat_array[j]+=tau
                 p_array[j]+=p
-    return test_stat_array.mean(), p_array.mean()    
+    print("Count: {}, total_comp: {}".format(count, segments_per_trial*X.shape[2]))
+    return test_stat_array/count, p_array/count    
             
 def obtain_stationarity_test_results_per_class(X, y, window_duration, method, min_time = 4, max_time = 6, sampling_freq = 250, get_multiple_segs_per_trial = True):
     if method != 'adfuller' and method != 'kpss': raise Exception("Check method passed into function")
@@ -66,7 +74,7 @@ def plot_avg_morlet_cwt(X, y, freqs = np.arange(3, 41), min_time = 0, max_time =
         
         
 if __name__ == '__main__':
-    path = '/Users/benreyhani/Files/GradSchool/BCISoftware/main/BCI/Dataset/A'
+    path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A'
     directory = path + '1'
         
     eeg_train, y_train, eeg_test, y_test = dl.load_pertinent_dataset(directory)
@@ -93,3 +101,7 @@ if __name__ == '__main__':
     #ica_stats_kpss, ica_p_kpss = obtain_stationarity_test_results_per_class(ica, y, 2, 'kpss')
 
     # TODO: Get rid of rejected trials for analysis ? 
+
+    X_train, y_train, freqs = fe.extract_psd_features(y_train, ica_train, 'Periodogram_PSD', {"window":"boxcar"})
+    X_test, y_test, freqs = fe.extract_psd_features(y_test, ica_test, 'Periodogram_PSD',  {"window":"boxcar"})
+    test_acc, classifier, train_acc = classifier.evaluate_linear_SVM(X_train, y_train, X_test, y_test, 'squared_hinge', 'l1', 0.023, freqs, 'PSD', 22, just_ac=False)

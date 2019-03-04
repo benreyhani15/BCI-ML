@@ -10,11 +10,81 @@ import scipy as sp
 import pandas as pd
 import matplotlib.pyplot as plt
 from analyzer import analyze_feature_performance
+from sklearn.model_selection import StratifiedKFold
+from feature_selection import select_k_using_stats
 
 path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A'
 
-def kfold_cv_w_feature_selection(classifier, X_train, y_train, param_grid, folds = 10):
-    print()
+def k_fold_cv_lin_svms(ica_train, y_train, ica_test, y_test, folds = 5, shuffle = False, feature_extraction_method = 'Periodogram_PSD'):
+    kf = StratifiedKFold(n_splits = folds, shuffle = shuffle)
+    features = [10, 25, 50, 100, 250, 500, 750, ica_train.shape[2]]
+    ar_orders = np.arange(5, 55, 5)
+    feature_extraction_params = ['boxcar'] if feature_extraction_method == 'Periodogram_PSD' else ar_orders
+    C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000]
+
+    feature_selection_methods = ['ANOVA', 'MI', 'CHI2']
+    cv_accs = np.zeros((len(feature_extraction_params), len(features), len(feature_selection_methods), 3, len(C)))
+    test_accs = np.zeros((len(feature_extraction_params), len(features), len(feature_selection_methods), 3, len(C)))
+    fe_param_label = "window" if feature_extraction_method == 'Periodogram_PSD' else 'ar_model'
+    df = pd.DataFrame(columns = ['Classifier', 'Loss Fxn', 'Penalty', 'Feature Type', fe_param_label, 'Feature Count', 'Feature Select Metric', 'C', 'CV acc', 'Test acc'])
+    split_count = 0
+    for train_idx, cv_idx in kf.split(np.zeros(len(y_train)), y_train):
+        split_count += 1
+        print("working on split {}/{}".format(split_count, folds))
+        for fe_param_idx, fe_param in enumerate(feature_extraction_params):
+            print("working on feature extraction param: {}/{}".format(fe_param_idx+1, len(feature_extraction_params)))
+            extra_args = {fe_param_label:fe_param}
+            X_train, y_train, freq = fe.extract_psd_features(y_train, ica_train, feature_extraction_method, extra_args, window_duration = 2)
+            X_test, y_test, freq = fe.extract_psd_features(y_test, ica_test, feature_extraction_method, extra_args, window_duration = 2)
+            
+            X_train_cv, X_test_cv = X_train[train_idx, :], X_train[cv_idx, :]
+            y_train_cv, y_test_cv = y_train[train_idx], y_train[cv_idx] 
+            for feature_idx, feature_count in enumerate(features):
+                for feature_select_idx, feature_select_method in enumerate(feature_selection_methods):
+                    X_train_cv_red, selector = select_k_using_stats(X_train_cv, y_train_cv, feature_count, metric = feature_select_method)
+                    X_test_cv_red = selector.transform(X_test_cv)
+                    
+                    X_train_red, selector_full = select_k_using_stats(X_train, y_train, feature_count, metric = feature_select_method)
+                    X_test_red = selector_full.transform(X_test)
+                    
+                    X_train_cv_stand, scaler_cv = pre.standardise_data(X_train_cv_red)
+                    X_test_cv_stand = scaler_cv.transform(X_test_cv_red)
+                    
+                    X_train_stand, scaler = pre.standardise_data(X_train_red)
+                    X_test_stand = scaler.transform(X_test_red)
+                    
+                    for c_idx, c in enumerate(C):
+                        lin_svm = train_linear_SVM(X_train_cv_stand, y_train_cv, 'squared_hinge', 'l1', c, duals = False)
+                        cv_acc = lin_svm.score(X_test_cv_stand, y_test_cv)
+                        cv_accs[fe_param_idx, feature_idx, feature_select_idx, 0, c_idx] = cv_acc
+                        lin_svm = train_linear_SVM(X_train_stand, y_train, 'squared_hinge', 'l1', c, duals = False)
+                        test_acc = lin_svm.score(X_test_stand, y_test)
+                        test_accs[fe_param_idx, feature_idx, feature_select_idx, 0, c_idx] = test_acc
+                        df = df.append({'Classifier': 'Linear SVM', 'Loss Fxn': 'squared hinge', 'Penalty':'l1','Feature Type': feature_extraction_method, fe_param_label:fe_param, 'Feature Count': feature_count,
+                                        'Feature Select Metric':feature_select_method, 'C':c, 'CV acc':cv_acc, 'Test acc':test_acc
+                                            }, ignore_index = True)
+                        
+                        lin_svm = train_linear_SVM(X_train_cv_stand, y_train_cv, 'squared_hinge', 'l2', c)
+                        cv_acc = lin_svm.score(X_test_cv_stand, y_test_cv)
+                        cv_accs[fe_param_idx, feature_idx, feature_select_idx, 1, c_idx] = cv_acc
+                        lin_svm = train_linear_SVM(X_train_stand, y_train, 'squared_hinge', 'l2', c)
+                        test_acc = lin_svm.score(X_test_stand, y_test)
+                        test_accs[fe_param_idx, feature_idx, feature_select_idx, 1, c_idx] = test_acc
+                        df = df.append({'Classifier': 'Linear SVM', 'Loss Fxn': 'squared hinge', 'Penalty':'l2', 'Feature Type': feature_extraction_method, fe_param_label:fe_param, 'Feature Count': feature_count,
+                                        'Feature Select Metric':feature_select_method, 'C':c, 'CV acc':cv_acc, 'Test acc':test_acc
+                                            }, ignore_index = True)
+
+                        lin_svm = train_linear_SVM(X_train_cv_stand, y_train_cv, 'hinge', 'l2', c)
+                        cv_acc = lin_svm.score(X_test_cv_stand, y_test_cv)
+                        cv_accs[fe_param_idx, feature_idx, feature_select_idx, 2, c_idx] = cv_acc
+                        lin_svm = train_linear_SVM(X_train_stand, y_train, 'hinge', 'l2', c)
+                        test_acc = lin_svm.score(X_test_stand, y_test)
+                        test_accs[fe_param_idx, feature_idx, feature_select_idx, 2, c_idx] = test_acc
+                        df = df.append({'Classifier': 'Linear SVM', 'Loss Fxn': 'hinge', 'Penalty':'l2', 'Feature Type': feature_extraction_method, fe_param_label:fe_param, 'Feature Count': feature_count,
+                                        'Feature Select Metric':feature_select_method, 'C':c, 'CV acc':cv_acc, 'Test acc':test_acc
+                                            }, ignore_index = True)
+    
+    return df, cv_accs, test_accs
 
 def kfold_cv(classifier, X_train, y_train, param_grid, send_notif, title, folds=10):
     grid_search = GridSearchCV(classifier, param_grid, cv=folds)
@@ -24,27 +94,21 @@ def kfold_cv(classifier, X_train, y_train, param_grid, send_notif, title, folds=
         send_email_notification("{}\n\nResults for search: {}".format(title, analyzer.get_string_results(grid_search)))
     return grid_search
 
-def find_linear_SVM(X_train, y_train, param_grid, pen, loss_fxn, send_notif, title, folds=10):
+def find_linear_SVM(X_train, y_train, param_grid, pen, loss_fxn, send_notif, title, folds=10, duals = True):
     X_train, scaler = pre.standardise_data(X_train)
-    duals = True 
-    if pen == 'l1':
-        duals = False
-    lin_svm = svm.LinearSVC(penalty=pen, loss=loss_fxn, dual=duals, max_iter = 1000000)
+    lin_svm = svm.LinearSVC(penalty=pen, loss=loss_fxn, dual=duals, max_iter = 100000000)
     print(lin_svm)
     grid_search = kfold_cv(lin_svm, X_train, y_train, param_grid, send_notif, title, folds)
     return grid_search.cv_results_['mean_test_score'], grid_search.best_params_
     
-def train_linear_SVM(X_train, y_train, loss_fxn, pen, c):
-    duals = True
-    if pen == 'l1':
-        duals = False
-    lin_svm = svm.LinearSVC(penalty = pen, loss = loss_fxn, dual = duals, C = c)
+def train_linear_SVM(X_train, y_train, loss_fxn, pen, c, duals = True):
+    lin_svm = svm.LinearSVC(penalty = pen, loss = loss_fxn, dual = duals, C = c, max_iter = 100000000)
     lin_svm.fit(X_train, y_train)
     return lin_svm
     
-def evaluate_linear_SVM(X_train, y_train, X_test, y_test, loss_fxn, penalty, c, feature_labels, feature_type, num_ica_comps, just_ac=False):
+def evaluate_linear_SVM(X_train, y_train, X_test, y_test, loss_fxn, penalty, c, feature_labels, feature_type, num_ica_comps, just_ac=False, duals = True):
     X_train_standard, scaler = pre.standardise_data(X_train)
-    lin_svm = train_linear_SVM(X_train_standard, y_train, loss_fxn, penalty, c)
+    lin_svm = train_linear_SVM(X_train_standard, y_train, loss_fxn, penalty, c, duals = duals)
     X_test_standard = scaler.transform(X_test)
     accuracy_test, accuracy_train = analyzer.evalulate_classifier("Linear SVM with L1 and c: {}".format(c), lin_svm, X_test_standard, y_test, 
                                                                   X_train_standard, y_train,
@@ -71,7 +135,7 @@ def evaluate_multiple_linsvms_for_comparison(X_train_array, X_test_array, y_trai
     return train_accs, test_accs, features_used
 
 if __name__ == '__main__':
-    path = '/Users/benreyhani/Files/GradSchool/BCISoftware/main/BCI/Dataset/A'
+    path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A'
     directory = path + '1'
         
     eeg_train, y_train, eeg_test, y_test = dl.load_pertinent_dataset(directory)
@@ -87,20 +151,21 @@ if __name__ == '__main__':
     C = np.linspace(0.001, 0.05, 10)
     param_grid_linsvm = {'C': C}
     
+    df, cv_acc, test_acc = k_fold_cv_lin_svms(ica_train, y_train, ica_test, y_test, folds = 5, shuffle = False, feature_extraction_method = 'Periodogram_PSD')
     '''
     method = 'Periodogram_PSD'
     extra_args = {}
     if method == 'Periodogram_PSD':
         extra_args['window'] = 'boxcar'
     '''
-    X_train, y_train, freqs = fe.extract_cwt_morlet_features(y_train, ica_train)
-    X_test, y_test, freqs = fe.extract_cwt_morlet_features(y_test, ica_test)
+    #X_train, y_train, freqs = fe.extract_cwt_morlet_features(y_train, ica_train)
+    #X_test, y_test, freqs = fe.extract_cwt_morlet_features(y_test, ica_test)
         
-    test_accs = np.zeros((len(C)))
-    for idx, c in enumerate(C):
-        test_accs[idx], classifier, tmp = evaluate_linear_SVM(X_train, y_train, X_test, y_test, 'squared_hinge', 'l1', c, freqs,
-                     'TFR', 22, just_ac = False) 
-        useful, useless = analyzer.find_useful_features(classifier.coef_)
+    #test_accs = np.zeros((len(C)))
+    #for idx, c in enumerate(C):
+     #   test_accs[idx], classifier, tmp = evaluate_linear_SVM(X_train, y_train, X_test, y_test, 'squared_hinge', 'l1', c, freqs,
+      #               'TFR', 22, just_ac = False) 
+      #  useful, useless = analyzer.find_useful_features(classifier.coef_)
     
     '''    
     X_train, y_train, freqs = fe.extract_psd_features(y_train, ica_train, method, extra_args, fft_length = 1024, min_time = 4, max_time = 6, 
