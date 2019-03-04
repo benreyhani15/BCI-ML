@@ -26,11 +26,11 @@ def k_fold_cv_lin_svms(ica_train, y_train, ica_test, y_test, folds = 5, shuffle 
     cv_accs = np.zeros((len(feature_extraction_params), len(features), len(feature_selection_methods), 3, len(C)))
     test_accs = np.zeros((len(feature_extraction_params), len(features), len(feature_selection_methods), 3, len(C)))
     fe_param_label = "window" if feature_extraction_method == 'Periodogram_PSD' else 'ar_model'
-    df = pd.DataFrame(columns = ['Classifier', 'Loss Fxn', 'Penalty', 'Feature Type', fe_param_label, 'Feature Count', 'Feature Select Metric', 'C', 'CV acc', 'Test acc'])
+    df = pd.DataFrame(columns = ['Classifier', 'Loss Fxn', 'Penalty', 'Feature Type', fe_param_label, 'Feature Count', 'Feature Select Metric', 'C', 
+                                 'Avg CV acc', 'Var CV Acc', 'Avg Test acc', 'Var Test Acc'])
     split_count = 0
     for train_idx, cv_idx in kf.split(np.zeros(len(y_train)), y_train):
-        split_count += 1
-        print("working on split {}/{}".format(split_count, folds))
+        print("working on split {}/{}".format(split_count+1, folds))
         for fe_param_idx, fe_param in enumerate(feature_extraction_params):
             print("working on feature extraction param: {}/{}".format(fe_param_idx+1, len(feature_extraction_params)))
             extra_args = {fe_param_label:fe_param}
@@ -56,34 +56,37 @@ def k_fold_cv_lin_svms(ica_train, y_train, ica_test, y_test, folds = 5, shuffle 
                     for c_idx, c in enumerate(C):
                         lin_svm = train_linear_SVM(X_train_cv_stand, y_train_cv, 'squared_hinge', 'l1', c, duals = False)
                         cv_acc = lin_svm.score(X_test_cv_stand, y_test_cv)
-                        cv_accs[fe_param_idx, feature_idx, feature_select_idx, 0, c_idx] = cv_acc
+                        cv_accs[fe_param_idx, feature_idx, feature_select_idx, 0, c_idx, split_count] = cv_acc
                         lin_svm = train_linear_SVM(X_train_stand, y_train, 'squared_hinge', 'l1', c, duals = False)
                         test_acc = lin_svm.score(X_test_stand, y_test)
-                        test_accs[fe_param_idx, feature_idx, feature_select_idx, 0, c_idx] = test_acc
-                        df = df.append({'Classifier': 'Linear SVM', 'Loss Fxn': 'squared hinge', 'Penalty':'l1','Feature Type': feature_extraction_method, fe_param_label:fe_param, 'Feature Count': feature_count,
-                                        'Feature Select Metric':feature_select_method, 'C':c, 'CV acc':cv_acc, 'Test acc':test_acc
-                                            }, ignore_index = True)
+                        test_accs[fe_param_idx, feature_idx, feature_select_idx, 0, c_idx, split_count] = test_acc
+                        
                         
                         lin_svm = train_linear_SVM(X_train_cv_stand, y_train_cv, 'squared_hinge', 'l2', c)
                         cv_acc = lin_svm.score(X_test_cv_stand, y_test_cv)
-                        cv_accs[fe_param_idx, feature_idx, feature_select_idx, 1, c_idx] = cv_acc
+                        cv_accs[fe_param_idx, feature_idx, feature_select_idx, 1, c_idx, split_count] = cv_acc
                         lin_svm = train_linear_SVM(X_train_stand, y_train, 'squared_hinge', 'l2', c)
                         test_acc = lin_svm.score(X_test_stand, y_test)
-                        test_accs[fe_param_idx, feature_idx, feature_select_idx, 1, c_idx] = test_acc
+                        test_accs[fe_param_idx, feature_idx, feature_select_idx, 1, c_idx, split_count] = test_acc
                         df = df.append({'Classifier': 'Linear SVM', 'Loss Fxn': 'squared hinge', 'Penalty':'l2', 'Feature Type': feature_extraction_method, fe_param_label:fe_param, 'Feature Count': feature_count,
                                         'Feature Select Metric':feature_select_method, 'C':c, 'CV acc':cv_acc, 'Test acc':test_acc
                                             }, ignore_index = True)
 
                         lin_svm = train_linear_SVM(X_train_cv_stand, y_train_cv, 'hinge', 'l2', c)
                         cv_acc = lin_svm.score(X_test_cv_stand, y_test_cv)
-                        cv_accs[fe_param_idx, feature_idx, feature_select_idx, 2, c_idx] = cv_acc
+                        cv_accs[fe_param_idx, feature_idx, feature_select_idx, 2, c_idx, split_count] = cv_acc
                         lin_svm = train_linear_SVM(X_train_stand, y_train, 'hinge', 'l2', c)
                         test_acc = lin_svm.score(X_test_stand, y_test)
-                        test_accs[fe_param_idx, feature_idx, feature_select_idx, 2, c_idx] = test_acc
+                        test_accs[fe_param_idx, feature_idx, feature_select_idx, 2, c_idx, split_count] = test_acc
                         df = df.append({'Classifier': 'Linear SVM', 'Loss Fxn': 'hinge', 'Penalty':'l2', 'Feature Type': feature_extraction_method, fe_param_label:fe_param, 'Feature Count': feature_count,
                                         'Feature Select Metric':feature_select_method, 'C':c, 'CV acc':cv_acc, 'Test acc':test_acc
                                             }, ignore_index = True)
     
+                        if split_count == (folds-1):
+                            df = df.append({'Classifier': 'Linear SVM', 'Loss Fxn': 'squared hinge', 'Penalty':'l1','Feature Type': feature_extraction_method, fe_param_label:fe_param, 'Feature Count': feature_count,
+                                        'Feature Select Metric':feature_select_method, 'C':c, 'CV acc':cv_acc, 'Test acc':test_acc
+                                            }, ignore_index = True)
+        split_count +=1                        
     return df, cv_accs, test_accs
 
 def kfold_cv(classifier, X_train, y_train, param_grid, send_notif, title, folds=10):
