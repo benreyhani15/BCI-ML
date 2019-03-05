@@ -17,14 +17,15 @@ path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A'
 
 def k_fold_cv_lin_svms(ica_train, y_train, ica_test, y_test, folds = 5, shuffle = False, feature_extraction_method = 'Periodogram_PSD'):
     kf = StratifiedKFold(n_splits = folds, shuffle = shuffle)
-    features = [10, 25, 50, 100, 250, 500, 750, ica_train.shape[2]]
+    features = [10, 25, 50, 100, 250, 500, 750]
+    features = np.arange(5, 100, 5)
     ar_orders = np.arange(5, 55, 5)
     feature_extraction_params = ['boxcar'] if feature_extraction_method == 'Periodogram_PSD' else ar_orders
     C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000]
-
-    feature_selection_methods = ['ANOVA', 'MI', 'CHI2']
-    cv_accs = np.zeros((len(feature_extraction_params), len(features), len(feature_selection_methods), 3, len(C), folds))
-    test_accs = np.zeros((len(feature_extraction_params), len(features), len(feature_selection_methods), 3, len(C), folds))
+    C = np.arange(0.025, 1.025, 0.025)
+    feature_selection_methods = ['ANOVA']
+    cv_accs = np.zeros((len(feature_extraction_params), len(features), len(feature_selection_methods), 2, len(C), folds))
+    test_accs = np.zeros((len(feature_extraction_params), len(features), len(feature_selection_methods), 2, len(C), folds))
     fe_param_label = "window" if feature_extraction_method == 'Periodogram_PSD' else 'ar_model'
     df = pd.DataFrame(columns = ['Classifier', 'Loss Fxn', 'Penalty', 'Feature Type', fe_param_label, 'Feature Count', 
                                      'Feature Select Metric', 'C', 'Avg CV Acc', 'Var CV Acc', 'Avg Test Acc'])
@@ -68,13 +69,6 @@ def k_fold_cv_lin_svms(ica_train, y_train, ica_test, y_test, folds = 5, shuffle 
                         test_acc = lin_svm.score(X_test_stand, y_test)
                         test_accs[fe_param_idx, feature_idx, feature_select_idx, 1, c_idx, split_count] = test_acc
 
-                        lin_svm = train_linear_SVM(X_train_cv_stand, y_train_cv, 'hinge', 'l2', c, duals = True)
-                        cv_acc = lin_svm.score(X_test_cv_stand, y_test_cv)
-                        cv_accs[fe_param_idx, feature_idx, feature_select_idx, 2, c_idx, split_count] = cv_acc
-                        lin_svm = train_linear_SVM(X_train_stand, y_train, 'hinge', 'l2', c, duals = True)
-                        test_acc = lin_svm.score(X_test_stand, y_test)
-                        test_accs[fe_param_idx, feature_idx, feature_select_idx, 2, c_idx, split_count] = test_acc
-
                         if split_count == (folds-1):
                             cv_acc = cv_accs[fe_param_idx, feature_idx, feature_select_idx, 0, c_idx, :]
                             test_acc = test_accs[fe_param_idx, feature_idx, feature_select_idx, 0, c_idx, :]
@@ -89,14 +83,7 @@ def k_fold_cv_lin_svms(ica_train, y_train, ica_test, y_test, folds = 5, shuffle 
                                             fe_param_label:fe_param, 'Feature Count': feature_count, 
                                                 'Feature Select Metric':feature_select_method, 'C':c, 'Avg CV Acc':cv_acc.mean(), 
                                                     'Var CV Acc': cv_acc.var(), 'Avg Test Acc':test_acc.mean()}, ignore_index = True)
-    
-                            cv_acc = cv_accs[fe_param_idx, feature_idx, feature_select_idx, 2, c_idx, :]
-                            test_acc = test_accs[fe_param_idx, feature_idx, feature_select_idx, 2, c_idx, :]
-                            df = df.append({'Classifier': 'Linear SVM', 'Loss Fxn': 'hinge', 'Penalty':'l2','Feature Type': feature_extraction_method, 
-                                            fe_param_label:fe_param, 'Feature Count': feature_count, 
-                                                'Feature Select Metric':feature_select_method, 'C':c, 'Avg CV Acc':cv_acc.mean(), 
-                                                    'Var CV Acc': cv_acc.var(), 'Avg Test Acc':test_acc.mean()}, ignore_index = True)
-    
+   
         split_count +=1                        
     return df, cv_accs, test_accs
 
@@ -149,14 +136,14 @@ def evaluate_multiple_linsvms_for_comparison(X_train_array, X_test_array, y_trai
     return train_accs, test_accs, features_used
 
 if __name__ == '__main__':
-    path = '/Users/benreyhani/Files/GradSchool/BCISoftware/main/BCI/Dataset/A'
+    path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A'
     directory = path + '1'
         
     eeg_train, y_train, eeg_test, y_test = dl.load_pertinent_dataset(directory)
     
     # Run it for 3 class problems (hands and feet)
-    y_train, eeg_train = pre.extract_3_class(y_train, eeg_train)
-    y_test, eeg_test = pre.extract_3_class(y_test, eeg_test)
+    #y_train, eeg_train = pre.extract_3_class(y_train, eeg_train)
+    #y_test, eeg_test = pre.extract_3_class(y_test, eeg_test)
     
     ica_test = pre.ica(directory, eeg_test)
     ica_train = pre.ica(directory, eeg_train)
@@ -165,7 +152,7 @@ if __name__ == '__main__':
     C = np.linspace(0.001, 0.05, 10)
     param_grid_linsvm = {'C': C}
     
-    df, cv_acc, test_acc = k_fold_cv_lin_svms(ica_train, y_train, ica_test, y_test, folds = 5, shuffle = False, feature_extraction_method = 'Periodogram_PSD')
+    df, cv_acc, test_acc = k_fold_cv_lin_svms(ica_train, y_train, ica_test, y_test, folds = 10, shuffle = False, feature_extraction_method = 'Periodogram_PSD')
     '''
     method = 'Periodogram_PSD'
     extra_args = {}

@@ -11,7 +11,6 @@ import feature_extraction as fe
 import classifier
     
 def run_stationarity_tests(X, y, window_duration, method, min_time = 4, max_time = 6, sampling_freq = 250, compute_multiple_segs_per_trial = True):
->>>>>>> Stashed changes
     segments_per_trial = (int)((max_time-min_time)/window_duration) if compute_multiple_segs_per_trial else 1
     test_stat_array = np.zeros(X.shape[0])
     p_array = np.zeros(X.shape[0])
