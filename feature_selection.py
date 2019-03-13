@@ -3,12 +3,13 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.svm import LinearSVC
 import data_loader as dl
 import preprocessing as pre
-import plotter, classifier
+import plotter
 import numpy as np
 import pandas as pd
 from feature_extraction import extract_psd_features, extract_coeff_features, extract_cwt_morlet_features
 import matplotlib.pyplot as plt
 from analyzer import analyze_feature_performance
+#import classifier
 
 def select_percent_using_stats(X_train, y_train, percent_keep, metric = 'ANOVA'):
     # metric can be 'ANOVA', 'MI', 'CHI2'
