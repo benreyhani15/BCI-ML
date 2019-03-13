@@ -13,9 +13,103 @@ from analyzer import analyze_feature_performance
 from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedKFold
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import LogisticRegression
 from feature_selection import select_k_using_stats
 
 path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A'
+
+def repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'liblinear', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_l1 = False, feature_selection_methods = [], features = [],
+                           C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100]):
+    if repeats>1:
+        kf = RepeatedStratifiedKFold(n_splits = folds, n_repeats = repeats)
+    else:
+        kf = StratifiedKFold(n_splits = folds, shuffle = True)
+        
+    if len(feature_selection_methods) == 0:
+        features = [ica_train.shape[0]*40]
+        feature_selection_methods = ['None']
+        do_fs = False
+    else:
+        if len(features) == 0:
+            features = [10, 30, 50, 100, 250, 500, 750]
+        do_fs = True
+        #features = np.arange(30, 50, 2)
+
+    ar_orders = np.arange(5, 80, 10)
+    ar_orders = [10, 25, 50, 75, 100]
+    feature_extraction_params = ['boxcar'] if feature_extraction_method == 'Periodogram_PSD' else ar_orders
+    fe_param_label = "window" if feature_extraction_method == 'Periodogram_PSD' else 'AR_model_order'
+
+    cv_accs = np.zeros((len(feature_extraction_params), len(features), len(feature_selection_methods), 1, len(C), folds*repeats))
+    test_accs = np.zeros((len(feature_extraction_params), len(features), len(feature_selection_methods), 1, len(C), folds*repeats))
+    
+    df_cv = pd.DataFrame(columns = ['Classifier', 'Solver', 'Penalty', 'Feature Type', fe_param_label, 'Feature Count', 
+                                     'Feature Select Metric', 'C', 'Avg CV Acc', 'Var CV Acc'])
+    df_test = pd.DataFrame(columns = ['Classifier', 'Solver', 'Penalty', 'Feature Type', fe_param_label, 'Feature Count', 
+                                     'Feature Select Metric', 'C', 'Avg Test Acc'])
+    split_count = 0
+    progress_count = 0
+    total = folds*repeats*len(feature_extraction_params)*len(features)*len(feature_selection_methods)*len(C)
+    for train_idx, cv_idx in kf.split(np.zeros(len(y_train)), y_train):
+        print("working on split {}/{}".format(split_count+1, folds))
+        for fe_param_idx, fe_param in enumerate(feature_extraction_params):
+            print("working on fe param {}/{}".format(fe_param_idx+1, len(feature_extraction_params)))
+            extra_args = {fe_param_label:fe_param}
+            X_train, y_train, freq = fe.extract_psd_features(y_train, ica_train, feature_extraction_method, extra_args, window_duration = 2)
+            X_test, y_test, freq = fe.extract_psd_features(y_test, ica_test, feature_extraction_method, extra_args, window_duration = 2)
+            
+            X_train_cv, X_test_cv = X_train[train_idx, :], X_train[cv_idx, :]
+            y_train_cv, y_test_cv = y_train[train_idx], y_train[cv_idx] 
+            for feature_idx, feature_count in enumerate(features):
+                print("working on fea select count {}/{}".format(feature_idx+1, len(features)))
+                for feature_select_idx, feature_select_method in enumerate(feature_selection_methods):
+                    print("working on fs method count {}/{}".format(feature_select_idx+1, len(feature_selection_methods)))
+                    if do_fs: 
+                        X_train_cv_red, selector = select_k_using_stats(X_train_cv, y_train_cv, feature_count, metric = feature_select_method)
+                        X_test_cv_red = selector.transform(X_test_cv)
+                        
+                        X_train_red, selector_full = select_k_using_stats(X_train, y_train, feature_count, metric = feature_select_method)
+                        X_test_red = selector_full.transform(X_test)
+                    else:
+                        X_train_cv_red = X_train_cv
+                        X_test_cv_red = X_test_cv
+                        X_train_red = X_train
+                        X_test_red = X_test
+                        
+                    X_train_cv_stand, scaler_cv = pre.standardise_data(X_train_cv_red)
+                    X_test_cv_stand = scaler_cv.transform(X_test_cv_red)
+                    
+                    X_train_stand, scaler = pre.standardise_data(X_train_red)
+                    X_test_stand = scaler.transform(X_test_red)
+                    
+                    for c_idx, c in enumerate(C):
+                        progress_count += 1
+                        print("working on c: {}/{}".format(c_idx+1, len(C)))
+                        penalty = 'l1' if is_l1 else 'l2'
+
+                        lr = train_logreg(X_train_cv_stand, y_train_cv, penalty, c, duals = duals, solver = solver)
+                        cv_acc = lr.score(X_test_cv_stand, y_test_cv)
+                        cv_accs[fe_param_idx, feature_idx, feature_select_idx, 0, c_idx, split_count] = cv_acc
+                        lr = train_logreg(X_train_stand, y_train, penalty, c, duals = duals, solver = solver)
+                        test_acc = lr.score(X_test_stand, y_test)
+                        test_accs[fe_param_idx, feature_idx, feature_select_idx, 0, c_idx, split_count] = test_acc
+                        print("{:.2%} finished".format(progress_count/total))
+                        if (split_count+1) == (folds*repeats):
+                            cv_acc = cv_accs[fe_param_idx, feature_idx, feature_select_idx, 0, c_idx, :]
+                            test_acc = test_accs[fe_param_idx, feature_idx, feature_select_idx, 0, c_idx, :]
+                            df_cv = df_cv.append({'Classifier': 'Log Reg', 'Solver': solver, 'Penalty':penalty, 'Feature Type': feature_extraction_method, 
+                                                fe_param_label:fe_param, 'Feature Count': feature_count, 
+                                                    'Feature Select Metric':feature_select_method, 'C':c, 'Avg CV Acc':cv_acc.mean(), 
+                                                        'Var CV Acc': cv_acc.var()}, ignore_index = True)
+    
+                            df_test = df_test.append({'Classifier': 'Log Reg', 'Solver': solver, 'Penalty':penalty,'Feature Type': feature_extraction_method, 
+                                                fe_param_label:fe_param, 'Feature Count': feature_count, 
+                                                    'Feature Select Metric':feature_select_method, 'C':c, 'Avg Test Acc':test_acc.mean()}, ignore_index = True)
+        
+   
+        split_count +=1                        
+    return df_cv, df_test, cv_accs, test_accs
 
 def repeated_k_fold_cv_linsvm(ica_train, y_train, ica_test, y_test, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
                        , is_l1 = True, feature_selection_methods = [], features = [],
@@ -328,6 +422,11 @@ def train_NB(X_train, y_train):
     NB.fit(X_train, y_train)
     return NB
 
+def train_logreg(X_train, y_train, pen, c, duals = False, solver = 'liblinear'):
+    lr = LogisticRegression(penalty = pen, dual = duals, C = c, solver = solver, max_iter = 100000000, multi_class = 'auto')
+    lr.fit(X_train, y_train)
+    return lr
+
 def evaluate_linear_SVM(X_train, y_train, X_test, y_test, loss_fxn, penalty, c, feature_labels, feature_type, num_ica_comps, just_ac=False, duals = True):
     X_train_standard, scaler = pre.standardise_data(X_train)
     lin_svm = train_linear_SVM(X_train_standard, y_train, loss_fxn, penalty, c, duals = duals)
@@ -357,7 +456,7 @@ def evaluate_multiple_linsvms_for_comparison(X_train_array, X_test_array, y_trai
     return train_accs, test_accs, features_used
 
 if __name__ == '__main__':
-    path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A'
+    path = '/Users/benreyhani/Files/GradSchool/BCISoftware/main/BCI/Dataset/A'
     directory = path + '1'
         
     eeg_train, y_train, eeg_test, y_test = dl.load_pertinent_dataset(directory)
@@ -380,7 +479,6 @@ if __name__ == '__main__':
                        , feature_selection_methods = ['ANOVA'], features = np.arange(30, 60, 5))
     NB_cv_MI, NB_test_MI, cv_acc, test_acc = repeated_k_fold_cv_NB(ica_train, y_train, ica_test, y_test, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
                        , feature_selection_methods = ['MI'], features = np.arange(30, 60, 5))
-    '''
     fs_cv_yw, fs_test_yw, cv_acc, test_acc = repeated_k_fold_cv_linsvm(ica_train, y_train, ica_test, y_test, folds = 3, repeats = 1, feature_extraction_method = 'AR_Yule-Walker_PSD',
                                               is_l1 = True, feature_selection_methods = ['ANOVA', 'MI'], 
                                                   features = [])
@@ -394,19 +492,35 @@ if __name__ == '__main__':
   
     none_cv_burg, none_test_burg, cv_acc, test_acc = repeated_k_fold_cv_linsvm(ica_train, y_train, ica_test, y_test, folds = 3, repeats = 1, feature_extraction_method = 'AR_Burg_PSD',
                                               is_l1 = True, feature_selection_methods = [])
-'''
     lda_anova_cv, lda_anova_test, cv_acc, test_acc = repeated_k_fold_cv_DA(ica_train, y_train, ica_test, y_test, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
                        , is_lda = True, solver = 'eigen', reg_params = ['auto'], feature_selection_methods = ['ANOVA'], features = np.arange(30, 60, 5))  
     lda_mi_cv, lda_mi_test, cv_acc, test_acc = repeated_k_fold_cv_DA(ica_train, y_train, ica_test, y_test, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
                        , is_lda = True, solver = 'eigen', reg_params = ['auto'], feature_selection_methods = ['MI'], features = np.arange(30, 60, 5))  
-   # lda_none_cv, lda_none_test, cv_acc, test_acc = repeated_k_fold_cv_DA(ica_train, y_train, ica_test, y_test, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
-    #                   , is_lda = True, solver = 'eigen', reg_params = ['auto'], feature_selection_methods = [], features = [])  
+    lda_none_cv, lda_none_test, cv_acc, test_acc = repeated_k_fold_cv_DA(ica_train, y_train, ica_test, y_test, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_lda = True, solver = 'eigen', reg_params = ['auto'], feature_selection_methods = [], features = [])  
 
-#    qda_reg_cv, qda_reg_test, cv_acc, test_acc = repeated_k_fold_cv_DA(ica_train, y_train, ica_test, y_test, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
-#                       , is_lda = False, reg_params = np.arange(0, 1.1, 0.1), feature_selection_methods = ['MI'], features = [])
+    qda_reg_cv, qda_reg_test, cv_acc, test_acc = repeated_k_fold_cv_DA(ica_train, y_train, ica_test, y_test, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_lda = False, reg_params = np.arange(0, 1.1, 0.1), feature_selection_methods = ['MI'], features = [])
     
 '''
-    
+    l2_liblinear_none_cv, l2_liblinear_none_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'liblinear', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_l1 = False, feature_selection_methods = ['ANOVA'], features = []
+                           )
+    l1_liblinear_none_cv, l1_liblinear_none_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'liblinear', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_l1 = True, feature_selection_methods = ['ANOVA'], features = []
+                           )
+    l2_lbfgs_none_cv, l2_lbfgs_none_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'lbfgs', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_l1 = False, feature_selection_methods = ['ANOVA'], features = []
+                           )
+    l2_new_none_cv, l2_new_none_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'newton-cg', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_l1 = False, feature_selection_methods = ['ANOVA'], features = []
+                           )
+    l2_sag_none_cv, l2_sag_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'sag', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_l1 = False, feature_selection_methods = ['ANOVA'], features = []
+                           )
+    l2_saga_none_cv, l2_saga_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'saga', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_l1 = False, feature_selection_methods = ['ANOVA'], features = []
+                           )
 '''
     method = 'Periodogram_PSD'
     extra_args = {}
