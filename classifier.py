@@ -18,9 +18,9 @@ from feature_selection import select_k_using_stats
 
 path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A'
 
-def repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'liblinear', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+def repeated_k_fold_cv_logreg(ica_train, train_labels, ica_test, test_labels, duals = False, solver = 'liblinear', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
                        , is_l1 = False, feature_selection_methods = [], features = [],
-                           C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100]):
+                           C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100], dur = 2):
     if repeats>1:
         kf = RepeatedStratifiedKFold(n_splits = folds, n_repeats = repeats)
     else:
@@ -51,13 +51,13 @@ def repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = Fals
     split_count = 0
     progress_count = 0
     total = folds*repeats*len(feature_extraction_params)*len(features)*len(feature_selection_methods)*len(C)
-    for train_idx, cv_idx in kf.split(np.zeros(len(y_train)), y_train):
+    for train_idx, cv_idx in kf.split(np.zeros(len(train_labels)), train_labels):
         print("working on split {}/{}".format(split_count+1, folds))
         for fe_param_idx, fe_param in enumerate(feature_extraction_params):
             print("working on fe param {}/{}".format(fe_param_idx+1, len(feature_extraction_params)))
             extra_args = {fe_param_label:fe_param}
-            X_train, y_train, freq = fe.extract_psd_features(y_train, ica_train, feature_extraction_method, extra_args, window_duration = 2)
-            X_test, y_test, freq = fe.extract_psd_features(y_test, ica_test, feature_extraction_method, extra_args, window_duration = 2)
+            X_train, y_train, freq = fe.extract_psd_features(train_labels, ica_train, feature_extraction_method, extra_args, window_duration = dur)
+            X_test, y_test, freq = fe.extract_psd_features(test_labels, ica_test, feature_extraction_method, extra_args, window_duration = dur)
             
             X_train_cv, X_test_cv = X_train[train_idx, :], X_train[cv_idx, :]
             y_train_cv, y_test_cv = y_train[train_idx], y_train[cv_idx] 
@@ -111,9 +111,9 @@ def repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = Fals
         split_count +=1                        
     return df_cv, df_test, cv_accs, test_accs
 
-def repeated_k_fold_cv_linsvm(ica_train, y_train, ica_test, y_test, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+def repeated_k_fold_cv_linsvm(ica_train, train_labels, ica_test, test_labels, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
                        , is_l1 = True, feature_selection_methods = [], features = [],
-                           C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100]):
+                           C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100], dur = 2):
     if repeats>1:
         kf = RepeatedStratifiedKFold(n_splits = folds, n_repeats = repeats)
     else:
@@ -144,13 +144,13 @@ def repeated_k_fold_cv_linsvm(ica_train, y_train, ica_test, y_test, folds = 5, r
     split_count = 0
     progress_count = 0
     total = folds*repeats*len(feature_extraction_params)*len(features)*len(feature_selection_methods)*len(C)
-    for train_idx, cv_idx in kf.split(np.zeros(len(y_train)), y_train):
+    for train_idx, cv_idx in kf.split(np.zeros(len(train_labels)), train_labels):
         print("working on split {}/{}".format(split_count+1, folds))
         for fe_param_idx, fe_param in enumerate(feature_extraction_params):
             print("working on fe param {}/{}".format(fe_param_idx+1, len(feature_extraction_params)))
             extra_args = {fe_param_label:fe_param}
-            X_train, y_train, freq = fe.extract_psd_features(y_train, ica_train, feature_extraction_method, extra_args, window_duration = 2)
-            X_test, y_test, freq = fe.extract_psd_features(y_test, ica_test, feature_extraction_method, extra_args, window_duration = 2)
+            X_train, y_train, freq = fe.extract_psd_features(train_labels, ica_train, feature_extraction_method, extra_args, window_duration = dur)
+            X_test, y_test, freq = fe.extract_psd_features(test_labels, ica_test, feature_extraction_method, extra_args, window_duration = dur)
             
             X_train_cv, X_test_cv = X_train[train_idx, :], X_train[cv_idx, :]
             y_train_cv, y_test_cv = y_train[train_idx], y_train[cv_idx] 
@@ -205,8 +205,8 @@ def repeated_k_fold_cv_linsvm(ica_train, y_train, ica_test, y_test, folds = 5, r
     return df_cv, df_test, cv_accs, test_accs
 
 # QDA and LDA
-def repeated_k_fold_cv_DA(ica_train, y_train, ica_test, y_test, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
-                       , is_lda = True, solver = 'svd', reg_params = [None], feature_selection_methods = [], features = []):
+def repeated_k_fold_cv_DA(ica_train, train_labels, ica_test, test_labels, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_lda = True, solver = 'svd', reg_params = [None], feature_selection_methods = [], features = [], dur = 2):
     if repeats>1:
         kf = RepeatedStratifiedKFold(n_splits = folds, n_repeats = repeats)
     else:
@@ -236,11 +236,11 @@ def repeated_k_fold_cv_DA(ica_train, y_train, ica_test, y_test, folds = 5, repea
     split_count = 0
     progress_count = 0
     total = folds*repeats*len(feature_extraction_params)*len(features)*len(feature_selection_methods)*len(reg_params)
-    for train_idx, cv_idx in kf.split(np.zeros(len(y_train)), y_train):
+    for train_idx, cv_idx in kf.split(np.zeros(len(train_labels)), train_labels):
         for fe_param_idx, fe_param in enumerate(feature_extraction_params):
             extra_args = {fe_param_label:fe_param}
-            X_train, y_train, freq = fe.extract_psd_features(y_train, ica_train, feature_extraction_method, extra_args, window_duration = 2)
-            X_test, y_test, freq = fe.extract_psd_features(y_test, ica_test, feature_extraction_method, extra_args, window_duration = 2)
+            X_train, y_train, freq = fe.extract_psd_features(train_labels, ica_train, feature_extraction_method, extra_args, window_duration = dur)
+            X_test, y_test, freq = fe.extract_psd_features(test_labels, ica_test, feature_extraction_method, extra_args, window_duration = dur)
             
             X_train_cv, X_test_cv = X_train[train_idx, :], X_train[cv_idx, :]
             y_train_cv, y_test_cv = y_train[train_idx], y_train[cv_idx] 
@@ -298,8 +298,8 @@ def repeated_k_fold_cv_DA(ica_train, y_train, ica_test, y_test, folds = 5, repea
     return df_cv, df_test, cv_accs, test_accs
 
 # Naive Bayes
-def repeated_k_fold_cv_NB(ica_train, y_train, ica_test, y_test, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
-                       , feature_selection_methods = [], features = []):
+def repeated_k_fold_cv_NB(ica_train, train_labels, test_labels, y_test, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , feature_selection_methods = [], features = [], dur = 2):
     if repeats>1:
         kf = RepeatedStratifiedKFold(n_splits = folds, n_repeats = repeats)
     else:
@@ -311,7 +311,7 @@ def repeated_k_fold_cv_NB(ica_train, y_train, ica_test, y_test, folds = 5, repea
         do_fs = False
     else:
         if len(features) == 0:
-            features = [10, 30, 50, 100, 250, 500, 750]
+            features = [30, 50, 100, 250, 500, 750]
         do_fs = True
         #features = np.arange(30, 50, 2)        
     ar_orders = np.arange(5, 55, 5)
@@ -328,11 +328,11 @@ def repeated_k_fold_cv_NB(ica_train, y_train, ica_test, y_test, folds = 5, repea
                                      'Feature Select Metric','Avg Test Acc'])
     split_count = 0
     progress_count = 0
-    for train_idx, cv_idx in kf.split(np.zeros(len(y_train)), y_train):
+    for train_idx, cv_idx in kf.split(np.zeros(len(train_labels)), train_labels):
         for fe_param_idx, fe_param in enumerate(feature_extraction_params):
             extra_args = {fe_param_label:fe_param}
-            X_train, y_train, freq = fe.extract_psd_features(y_train, ica_train, feature_extraction_method, extra_args, window_duration = 2)
-            X_test, y_test, freq = fe.extract_psd_features(y_test, ica_test, feature_extraction_method, extra_args, window_duration = 2)
+            X_train, y_train, freq = fe.extract_psd_features(train_labels, ica_train, feature_extraction_method, extra_args, window_duration = dur)
+            X_test, y_test, freq = fe.extract_psd_features(test_labels, ica_test, feature_extraction_method, extra_args, window_duration = dur)
             
             X_train_cv, X_test_cv = X_train[train_idx, :], X_train[cv_idx, :]
             y_train_cv, y_test_cv = y_train[train_idx], y_train[cv_idx] 
@@ -456,7 +456,7 @@ def evaluate_multiple_linsvms_for_comparison(X_train_array, X_test_array, y_trai
     return train_accs, test_accs, features_used
 
 if __name__ == '__main__':
-    path = '/Users/benreyhani/Files/GradSchool/BCISoftware/main/BCI/Dataset/A'
+    path = r'C:\Users\reyhanib\Documents\MATLAB\BCICompMI\A'
     directory = path + '1'
         
     eeg_train, y_train, eeg_test, y_test = dl.load_pertinent_dataset(directory)
@@ -471,6 +471,20 @@ if __name__ == '__main__':
     #C = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000]
     C = np.linspace(0.001, 0.05, 10)
     param_grid_linsvm = {'C': C}
+    
+    l1none_cv, l1none_test, cv_acc, test_acc = repeated_k_fold_cv_linsvm(ica_train, y_train, ica_test, y_test, folds = 3, repeats = 1, feature_extraction_method = 'Periodogram_PSD',
+                                              is_l1 = True, feature_selection_methods = [], dur = 1)
+    l1anova_cv, l1anova_test, cv_acc, test_acc = repeated_k_fold_cv_linsvm(ica_train, y_train, ica_test, y_test, folds = 3, repeats = 1, feature_extraction_method = 'Periodogram_PSD',
+                                              is_l1 = True, feature_selection_methods = ['ANOVA'], dur = 1)
+    l1mi_cv, l1mi_test, cv_acc, test_acc = repeated_k_fold_cv_linsvm(ica_train, y_train, ica_test, y_test, folds = 3, repeats = 1, feature_extraction_method = 'Periodogram_PSD',
+                                              is_l1 = True, feature_selection_methods = ['MI'], dur = 1)
+    
+    l2none_cv, l2none_test, cv_acc, test_acc = repeated_k_fold_cv_linsvm(ica_train, y_train, ica_test, y_test, folds = 3, repeats = 1, feature_extraction_method = 'Periodogram_PSD',
+                                              is_l1 = False, feature_selection_methods = [], dur = 1)
+    l2anova_cv, l2anova_test, cv_acc, test_acc = repeated_k_fold_cv_linsvm(ica_train, y_train, ica_test, y_test, folds = 3, repeats = 1, feature_extraction_method = 'Periodogram_PSD',
+                                              is_l1 = False, feature_selection_methods = ['ANOVA'], dur = 1)
+    l2mi_cv, l2mi_test, cv_acc, test_acc = repeated_k_fold_cv_linsvm(ica_train, y_train, ica_test, y_test, folds = 3, repeats = 1, feature_extraction_method = 'Periodogram_PSD',
+                                              is_l1 = False, feature_selection_methods = ['MI'], dur = 1)
     
     '''
     NB_cv, NB_test, cv_acc, test_acc = repeated_k_fold_cv_NB(ica_train, y_train, ica_test, y_test, folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
@@ -503,30 +517,32 @@ if __name__ == '__main__':
                        , is_lda = False, reg_params = np.arange(0, 1.1, 0.1), feature_selection_methods = ['MI'], features = [])
     
 '''
-    l2_liblinear_none_cv, l2_liblinear_none_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'liblinear', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
-                       , is_l1 = False, feature_selection_methods = ['ANOVA'], features = []
+'''
+    l2_liblinear_none_cv, l2_liblinear_none_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'liblinear', folds = 3, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_l1 = False, feature_selection_methods = ['MI'], features = np.arange(25, 65, 5), C = [0.005, 0.01, 0.05, 0.1, 0.5, 1]
                            )
-    l1_liblinear_none_cv, l1_liblinear_none_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'liblinear', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
-                       , is_l1 = True, feature_selection_methods = ['ANOVA'], features = []
+    l1_liblinear_none_cv, l1_liblinear_none_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'liblinear', folds = 3, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_l1 = True, feature_selection_methods = ['MI'], features = np.arange(25, 65, 5), C = [0.005, 0.01, 0.05, 0.1, 0.5, 1]
                            )
-    l2_lbfgs_none_cv, l2_lbfgs_none_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'lbfgs', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
-                       , is_l1 = False, feature_selection_methods = ['ANOVA'], features = []
+    l2_lbfgs_none_cv, l2_lbfgs_none_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'lbfgs', folds = 3, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_l1 = False, feature_selection_methods = ['MI'], features = np.arange(25, 65, 5), C = [0.005, 0.01, 0.05, 0.1, 0.5, 1]
                            )
-    l2_new_none_cv, l2_new_none_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'newton-cg', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
-                       , is_l1 = False, feature_selection_methods = ['ANOVA'], features = []
+    l2_new_none_cv, l2_new_none_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'newton-cg', folds = 3, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_l1 = False, feature_selection_methods = ['MI'], features = np.arange(25, 65, 5), C = [0.005, 0.01, 0.05, 0.1, 0.5, 1]
                            )
-    l2_sag_none_cv, l2_sag_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'sag', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
-                       , is_l1 = False, feature_selection_methods = ['ANOVA'], features = []
+    l2_sag_none_cv, l2_sag_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'sag', folds = 3, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_l1 = False, feature_selection_methods = ['MI'], features = np.arange(25, 65, 5), C = [0.005, 0.01, 0.05, 0.1, 0.5, 1]
                            )
-    l2_saga_none_cv, l2_saga_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'saga', folds = 5, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
-                       , is_l1 = False, feature_selection_methods = ['ANOVA'], features = []
+    l2_saga_none_cv, l2_saga_test, cv_acc, test_acc = repeated_k_fold_cv_logreg(ica_train, y_train, ica_test, y_test, duals = False, solver = 'saga', folds = 3, repeats = 1, feature_extraction_method = 'Periodogram_PSD'
+                       , is_l1 = False, feature_selection_methods = ['MI'], features = np.arange(25, 65, 5), C = [0.005, 0.01, 0.05, 0.1, 0.5, 1]
                            )
+'''
 '''
     method = 'Periodogram_PSD'
     extra_args = {}
     if method == 'Periodogram_PSD':
         extra_args['window'] = 'boxcar'
-    
+    s
     #X_train, y_train, freqs = fe.extract_cwt_morlet_features(y_train, ica_train)
     #X_test, y_test, freqs = fe.extract_cwt_morlet_features(y_test, ica_test)
         
