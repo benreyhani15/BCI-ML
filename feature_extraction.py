@@ -3,7 +3,7 @@ from scipy.signal import periodogram, get_window, welch
 import preprocessing as pre
 import data_loader as dl
 from spectrum import aryule, pyule, pburg, pcovar
-from mne.time_frequency import tfr_array_morlet
+#from mne.time_frequency import tfr_array_morlet
 
 def extract_features(data, method, extra_args, segments_per_trial, min_time = 4, max_time = 6, sampling_freq = 250, window_duration = 2):
     features_array = []
